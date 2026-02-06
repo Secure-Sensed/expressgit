@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ExpressX | Parcel Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">Ex</div>
+        <div class="name"><span>Express</span><strong>X</strong></div>
+      </div>
+      <div class="top-actions">
+        <button class="ghost-btn" id="openAdmin">Admin Console</button>
+        <button class="solid-btn" id="createCTA">Create Shipment</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">ExpressX delivers clarity</p>
+          <h1>Track every parcel with FedEx-inspired precision.</h1>
+          <p class="lead">Live status, location breadcrumbs, and proactive ETA signals — all wrapped in the ExpressX skin styled after the FedEx experience.</p>
+          <form id="trackForm" class="track-form">
+            <input id="trackingInput" type="text" placeholder="Enter tracking number" required>
+            <button type="submit" class="solid-btn">Track parcel</button>
+          </form>
+          <div class="stats">
+            <div><span class="stat-number" id="inTransitCount">0</span><span class="stat-label">In transit</span></div>
+            <div><span class="stat-number" id="outForDeliveryCount">0</span><span class="stat-label">Out for delivery</span></div>
+            <div><span class="stat-number" id="deliveredCount">0</span><span class="stat-label">Delivered</span></div>
+          </div>
+        </div>
+        <div class="glass card highlight" id="resultCard">
+          <div class="card-head">
+            <div>
+              <p class="label">Tracking</p>
+              <h3 id="resultTracking">---</h3>
+            </div>
+            <span class="chip" id="resultStatus">Waiting</span>
+          </div>
+          <div class="eta-row">
+            <div>
+              <p class="label">Destination</p>
+              <p class="value" id="resultDestination">—</p>
+            </div>
+            <div>
+              <p class="label">ETA</p>
+              <p class="value" id="resultEta">—</p>
+            </div>
+            <div>
+              <p class="label">Current location</p>
+              <p class="value" id="resultLocation">—</p>
+            </div>
+          </div>
+          <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="timeline" id="timeline">
+            <p class="muted">No events yet.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="map-panel glass">
+        <div class="map-head">
+          <div>
+            <p class="label">Live lane view</p>
+            <h3>North America corridor</h3>
+          </div>
+          <button class="ghost-btn small" id="refreshSeed">Reset demo data</button>
+        </div>
+        <div class="map-placeholder">
+          <div class="orbit orbit-purple"></div>
+          <div class="orbit orbit-orange"></div>
+          <div class="dot dot-orange"></div>
+          <div class="dot dot-purple"></div>
+          <div class="dot dot-white"></div>
+          <p class="muted">Map placeholder — replace with live map widget if desired.</p>
+        </div>
+        <div class="lane-list" id="laneList"></div>
+      </section>
+    </main>
+  </div>
+
+  <aside class="admin-drawer" id="adminDrawer">
+    <div class="drawer-head">
+      <h2>Admin Console</h2>
+      <button class="ghost-btn small" id="closeAdmin">Close</button>
+    </div>
+    <div id="adminAuth">
+      <p class="muted">Enter admin passphrase to manage shipments.</p>
+      <form id="authForm" class="stack">
+        <input type="password" id="adminPass" placeholder="Passphrase" required>
+        <button class="solid-btn">Unlock</button>
+      </form>
+    </div>
+    <div id="adminBody" class="hidden">
+      <section class="drawer-section">
+        <h4>Create / Update shipment</h4>
+        <form id="createForm" class="grid-form">
+          <input name="tracking" placeholder="Tracking number" required>
+          <input name="recipient" placeholder="Recipient name" required>
+          <input name="origin" placeholder="Origin hub" required>
+          <input name="destination" placeholder="Destination hub" required>
+          <input name="eta" type="date" placeholder="ETA" required>
+          <select name="status">
+            <option value="Created">Created</option>
+            <option value="In Transit">In Transit</option>
+            <option value="At Destination">At Destination</option>
+            <option value="Out for Delivery">Out for Delivery</option>
+            <option value="Delivered">Delivered</option>
+            <option value="Exception">Exception</option>
+          </select>
+          <input name="location" placeholder="Current location" required>
+          <input name="note" placeholder="Scan note / comment">
+          <button class="solid-btn full">Save shipment</button>
+        </form>
+      </section>
+      <section class="drawer-section">
+        <h4>Existing shipments</h4>
+        <div id="adminList" class="list"></div>
+      </section>
+    </div>
+  </aside>
+
+  <div class="scrim hidden" id="scrim"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
