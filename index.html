@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+z0pZbM90wXFdFSdKJeMgnbPiwxupCSvJ8qkPj4uo=" crossorigin=""/>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -213,14 +214,7 @@
         </div>
         <button class="ghost-btn small" id="refreshSeed">Reset demo data</button>
       </div>
-      <div class="map-placeholder">
-        <div class="orbit orbit-purple"></div>
-        <div class="orbit orbit-orange"></div>
-        <div class="dot dot-orange"></div>
-        <div class="dot dot-purple"></div>
-        <div class="dot dot-white"></div>
-        <p class="muted">Map placeholder — plug in Mapbox/Leaflet for live view.</p>
-      </div>
+      <div id="liveMap" aria-label="Live map showing current shipment locations"></div>
     </section>
   </div>
 
@@ -272,6 +266,7 @@
 
   <div class="scrim hidden" id="scrim"></div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j7kGStp6nqGq6r5Ge8X1iG5GkS2kG4JME6u5wYQ=" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
 </html>

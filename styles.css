@@ -170,24 +170,14 @@ textarea { resize: vertical; min-height: 80px; }
 
 .map-panel { margin-top: 12px; }
 .map-head { display: flex; justify-content: space-between; align-items: center; }
-.map-placeholder {
-  position: relative;
-  height: 260px;
+#liveMap {
+  height: 320px;
   margin: 16px 0 4px;
   border-radius: 16px;
-  background: radial-gradient(circle at 30% 40%, rgba(255,102,0,0.25), transparent 50%),
-              radial-gradient(circle at 70% 60%, rgba(77,20,140,0.35), transparent 55%),
-              linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
-  overflow: hidden;
   border: 1px solid var(--stroke);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+  overflow: hidden;
 }
-.orbit { position: absolute; border-radius: 50%; border: 1px dashed rgba(255,255,255,0.18); }
-.orbit-purple { width: 70%; height: 70%; top: 15%; left: 15%; }
-.orbit-orange { width: 50%; height: 50%; top: 25%; left: 25%; transform: rotate(8deg); }
-.dot { position: absolute; width: 14px; height: 14px; border-radius: 50%; }
-.dot-orange { background: var(--orange); top: 45%; left: 62%; box-shadow: 0 0 0 10px rgba(255,102,0,0.14); }
-.dot-purple { background: var(--purple); top: 24%; left: 36%; box-shadow: 0 0 0 10px rgba(77,20,140,0.2); }
-.dot-white { background: #fff; top: 58%; left: 32%; box-shadow: 0 0 0 6px rgba(255,255,255,0.16); }
 
 .admin-drawer {
   position: fixed;

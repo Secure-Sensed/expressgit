@@ -95,6 +95,8 @@ let shipments = [];
 let pickups = [];
 let notifications = [];
 let manageEvents = [];
+let map;
+let markerLayer;
 
 init();
 
@@ -109,6 +111,7 @@ function init() {
   renderPickups();
   renderNotifications();
   renderLocations(LOCATIONS);
+  initMap();
   wireEvents();
 }
 
@@ -178,6 +181,7 @@ function renderResult(shipment) {
   elements.progressBar.style.width = `${pct}%`;
 
   renderTimeline(shipment.events);
+  updateMapMarkers();
 }
 
 function renderTimeline(events = []) {
@@ -252,6 +256,7 @@ function renderMultiList(list = shipments, ids) {
     )
     .join("");
   elements.multiList.innerHTML = html || `<p class="muted">No matches${ids ? " for " + ids.join(", ") : ""}.</p>`;
+  updateMapMarkers();
 }
 
 function handleRate(e) {
@@ -315,6 +320,7 @@ function handleHold(e) {
   saveShipments();
   renderResult(shipment);
   renderLaneList();
+  updateMapMarkers();
   addManageEvent(`Hold at location set for ${track}`, loc);
   elements.holdForm.reset();
 }
@@ -341,6 +347,7 @@ function handleReturn(e) {
   shipment.events.unshift({ title: "Return Label Sent", location: shipment.destination, note: `Sent to ${email}`, time: new Date().toISOString() });
   saveShipments();
   renderResult(shipment);
+  updateMapMarkers();
   addManageEvent(`Return label sent for ${track}`, email);
   elements.returnForm.reset();
 }
@@ -475,6 +482,7 @@ function handleCreate(e) {
   renderMultiList();
   renderAdminList();
   renderResult(existing || shipments[0]);
+  updateMapMarkers();
   elements.createForm.reset();
 }
 
@@ -523,6 +531,7 @@ function quickUpdate(tracking) {
   renderMultiList();
   renderAdminList();
   renderResult(shipment);
+  updateMapMarkers();
 }
 
 function resetSeed() {
@@ -533,6 +542,7 @@ function resetSeed() {
   renderTimeline(shipments[0].events);
   renderResult(shipments[0]);
   renderMultiList();
+  updateMapMarkers();
 }
 
 function loadShipments() {
@@ -551,6 +561,66 @@ function loadShipments() {
 
 function saveShipments(data = shipments) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function initMap() {
+  const mapContainer = document.getElementById("liveMap");
+  if (!mapContainer || typeof L === "undefined") return;
+  map = L.map("liveMap", { zoomControl: false }).setView([39.5, -98.35], 4);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+  updateMapMarkers();
+  setInterval(updateMapMarkers, 10000);
+}
+
+function updateMapMarkers() {
+  if (!markerLayer) return;
+  markerLayer.clearLayers();
+  const points = [];
+  shipments.forEach((s) => {
+    const coords = guessCoords(s.location || s.destination || s.origin);
+    if (!coords) return;
+    const marker = L.circleMarker(coords, {
+      radius: 7,
+      color: s.status === "Delivered" ? "#9be28a" : "#ff6600",
+      fillOpacity: 0.85,
+      weight: 2
+    }).bindPopup(`<strong>${s.tracking}</strong><br>${s.status}<br>${s.location || s.destination}`);
+    marker.addTo(markerLayer);
+    points.push(coords);
+  });
+  if (points.length) {
+    const bounds = L.latLngBounds(points);
+    map.fitBounds(bounds.pad(0.2), { animate: true });
+  }
+}
+
+const CITY_COORDS = {
+  memphis: [35.0456, -89.98],
+  seattle: [47.6062, -122.3321],
+  oakland: [37.8044, -122.2711],
+  newark: [40.7357, -74.1724],
+  austin: [30.2672, -97.7431],
+  louisville: [38.2527, -85.7585],
+  toronto: [43.6532, -79.3832],
+  vancouver: [49.2827, -123.1207],
+  los: [34.0522, -118.2437],
+  angeles: [34.0522, -118.2437],
+  denver: [39.7392, -104.9903],
+  phoenix: [33.4484, -112.074],
+  calgary: [51.0447, -114.0719],
+  brooklyn: [40.6782, -73.9442]
+};
+
+function guessCoords(text = "") {
+  const lower = text.toLowerCase();
+  const key = Object.keys(CITY_COORDS).find((k) => lower.includes(k));
+  if (key) return CITY_COORDS[key];
+  const lat = 25 + Math.random() * 24;
+  const lng = -124 + Math.random() * 57;
+  return [lat, lng];
 }
 
 function sendTrackingEmail(tracking, email, destination) {
