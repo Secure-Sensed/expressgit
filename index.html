@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ExpressX | Parcel Intelligence</title>
+  <title>ExpressX | Ship, Track, Deliver</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,78 +16,212 @@
         <div class="mark">Ex</div>
         <div class="name"><span>Express</span><strong>X</strong></div>
       </div>
+      <nav class="nav">
+        <a href="#track">Track</a>
+        <a href="#ship">Ship</a>
+        <a href="#pickup">Pickups</a>
+        <a href="#locations">Locations</a>
+        <a href="#manage">Manage</a>
+      </nav>
       <div class="top-actions">
         <button class="ghost-btn" id="openAdmin">Admin Console</button>
         <button class="solid-btn" id="createCTA">Create Shipment</button>
       </div>
     </header>
 
-    <main class="layout">
-      <section class="hero-card">
-        <div class="hero-copy">
-          <p class="eyebrow">ExpressX delivers clarity</p>
-          <h1>Track every parcel with FedEx-inspired precision.</h1>
-          <p class="lead">Live status, location breadcrumbs, and proactive ETA signals — all wrapped in the ExpressX skin styled after the FedEx experience.</p>
-          <form id="trackForm" class="track-form">
-            <input id="trackingInput" type="text" placeholder="Enter tracking number" required>
-            <button type="submit" class="solid-btn">Track parcel</button>
-          </form>
-          <div class="stats">
-            <div><span class="stat-number" id="inTransitCount">0</span><span class="stat-label">In transit</span></div>
-            <div><span class="stat-number" id="outForDeliveryCount">0</span><span class="stat-label">Out for delivery</span></div>
-            <div><span class="stat-number" id="deliveredCount">0</span><span class="stat-label">Delivered</span></div>
+    <section class="hero">
+      <div class="panel glass" id="trackPanel">
+        <p class="eyebrow">Track</p>
+        <h1>Track parcels with FedEx-like clarity — renamed ExpressX.</h1>
+        <form id="trackForm" class="stack gap">
+          <input id="trackingInput" type="text" placeholder="Enter tracking number" required>
+          <input id="trackingMulti" type="text" placeholder="Track multiple (comma separated)" />
+          <div class="row gap">
+            <button type="submit" class="solid-btn">Track</button>
+            <button type="button" class="ghost-btn" id="resetSeed">Reset demo data</button>
           </div>
+        </form>
+        <div class="stats">
+          <div><span class="stat-number" id="inTransitCount">0</span><span class="stat-label">In transit</span></div>
+          <div><span class="stat-number" id="outForDeliveryCount">0</span><span class="stat-label">Out for delivery</span></div>
+          <div><span class="stat-number" id="deliveredCount">0</span><span class="stat-label">Delivered</span></div>
         </div>
-        <div class="glass card highlight" id="resultCard">
-          <div class="card-head">
-            <div>
-              <p class="label">Tracking</p>
-              <h3 id="resultTracking">---</h3>
-            </div>
-            <span class="chip" id="resultStatus">Waiting</span>
-          </div>
-          <div class="eta-row">
-            <div>
-              <p class="label">Destination</p>
-              <p class="value" id="resultDestination">—</p>
-            </div>
-            <div>
-              <p class="label">ETA</p>
-              <p class="value" id="resultEta">—</p>
-            </div>
-            <div>
-              <p class="label">Current location</p>
-              <p class="value" id="resultLocation">—</p>
-            </div>
-          </div>
-          <div class="progress">
-            <div class="progress-bar" id="progressBar"></div>
-          </div>
-          <div class="timeline" id="timeline">
-            <p class="muted">No events yet.</p>
-          </div>
+      </div>
+      <div class="panel glass" id="ratePanel">
+        <p class="eyebrow">Rates & Transit</p>
+        <h2>Get rates and transit times</h2>
+        <form id="rateForm" class="grid-form compact">
+          <input name="origin" id="rateOrigin" placeholder="Origin ZIP/City" required>
+          <input name="dest" id="rateDest" placeholder="Destination ZIP/City" required>
+          <input name="weight" id="rateWeight" type="number" step="0.1" min="0.1" placeholder="Weight (lb)" required>
+          <select id="rateService" name="service">
+            <option value="Priority Overnight">Priority Overnight</option>
+            <option value="2Day">2Day</option>
+            <option value="Ground">Ground</option>
+          </select>
+          <button class="solid-btn full">Get quote</button>
+        </form>
+        <div class="quote">
+          <p class="label">Estimated cost</p>
+          <h3 id="ratePrice">$—</h3>
+          <p class="muted" id="rateEta">Transit time will appear here.</p>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="map-panel glass">
-        <div class="map-head">
+    <section class="actions" id="ship">
+      <div class="action-card">
+        <h4>Create a shipment</h4>
+        <p>Generate labels and manifest in seconds.</p>
+        <button class="ghost-btn small" id="actionCreate">Start</button>
+      </div>
+      <div class="action-card">
+        <h4>Schedule a pickup</h4>
+        <p>Door pickup for ExpressX parcels, same-day windows.</p>
+        <button class="ghost-btn small" id="scrollPickup">Schedule</button>
+      </div>
+      <div class="action-card">
+        <h4>Hold at location</h4>
+        <p>Redirect to staffed locations before delivery.</p>
+        <button class="ghost-btn small" id="scrollHold">Hold now</button>
+      </div>
+      <div class="action-card">
+        <h4>Returns</h4>
+        <p>Create return labels and send QR codes.</p>
+        <button class="ghost-btn small" id="makeReturn">Create return</button>
+      </div>
+      <div class="action-card">
+        <h4>Delivery instructions</h4>
+        <p>Add gate codes, signature release, or handoff rules.</p>
+        <button class="ghost-btn small" id="scrollInstructions">Add note</button>
+      </div>
+      <div class="action-card">
+        <h4>Notifications</h4>
+        <p>Email/SMS updates for every scan event.</p>
+        <button class="ghost-btn small" id="scrollNotify">Set alerts</button>
+      </div>
+    </section>
+
+    <section class="grid two" id="track">
+      <div class="panel glass">
+        <div class="card-head">
           <div>
-            <p class="label">Live lane view</p>
-            <h3>North America corridor</h3>
+            <p class="label">Tracking</p>
+            <h3 id="resultTracking">---</h3>
           </div>
-          <button class="ghost-btn small" id="refreshSeed">Reset demo data</button>
+          <span class="chip" id="resultStatus">Waiting</span>
         </div>
-        <div class="map-placeholder">
-          <div class="orbit orbit-purple"></div>
-          <div class="orbit orbit-orange"></div>
-          <div class="dot dot-orange"></div>
-          <div class="dot dot-purple"></div>
-          <div class="dot dot-white"></div>
-          <p class="muted">Map placeholder — replace with live map widget if desired.</p>
+        <div class="eta-row">
+          <div>
+            <p class="label">Destination</p>
+            <p class="value" id="resultDestination">—</p>
+          </div>
+          <div>
+            <p class="label">ETA</p>
+            <p class="value" id="resultEta">—</p>
+          </div>
+          <div>
+            <p class="label">Current location</p>
+            <p class="value" id="resultLocation">—</p>
+          </div>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="timeline" id="timeline">
+          <p class="muted">No events yet.</p>
+        </div>
+      </div>
+      <div class="panel glass">
+        <div class="panel-head">
+          <h3>Active shipments</h3>
+          <button class="ghost-btn small" id="refreshLane">Refresh</button>
         </div>
         <div class="lane-list" id="laneList"></div>
-      </section>
-    </main>
+        <div class="panel-sub">
+          <h4>Multi-track list</h4>
+          <div id="multiList" class="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid two" id="pickup">
+      <div class="panel glass">
+        <h3>Schedule a pickup</h3>
+        <form id="pickupForm" class="stack gap">
+          <input id="pickupName" placeholder="Contact name" required>
+          <input id="pickupAddr" placeholder="Pickup address" required>
+          <input id="pickupDate" type="date" required>
+          <input id="pickupWindow" placeholder="Time window (e.g., 2-5pm)" required>
+          <button class="solid-btn">Schedule pickup</button>
+        </form>
+        <div class="mini-list" id="pickupList"></div>
+      </div>
+      <div class="panel glass" id="manage">
+        <h3>Manage delivery</h3>
+        <form id="holdForm" class="stack gap">
+          <div class="row gap">
+            <input id="holdTracking" placeholder="Tracking number" required>
+            <input id="holdLocation" placeholder="Hold at (city / site)" required>
+          </div>
+          <button class="ghost-btn">Hold / Redirect</button>
+        </form>
+        <form id="instructionForm" class="stack gap">
+          <div class="row gap">
+            <input id="instTracking" placeholder="Tracking number" required>
+            <input id="instNote" placeholder="Delivery instructions" required>
+          </div>
+          <button class="ghost-btn">Save instructions</button>
+        </form>
+        <form id="returnForm" class="stack gap">
+          <div class="row gap">
+            <input id="returnTracking" placeholder="Tracking for return" required>
+            <input id="returnEmail" type="email" placeholder="Recipient email" required>
+          </div>
+          <button class="ghost-btn">Send return label</button>
+        </form>
+        <div class="panel-sub" id="manageFeed"></div>
+      </div>
+    </section>
+
+    <section class="grid two" id="locations">
+      <div class="panel glass">
+        <h3>Find a drop-off / hold location</h3>
+        <form id="locForm" class="stack gap">
+          <input id="locQuery" placeholder="Search by city or ZIP">
+          <button class="solid-btn">Search locations</button>
+        </form>
+        <div class="list" id="locList"></div>
+      </div>
+      <div class="panel glass">
+        <h3>Notifications</h3>
+        <form id="notifyForm" class="stack gap">
+          <input id="notifyTracking" placeholder="Tracking number (optional)">
+          <input id="notifyEmail" type="email" placeholder="Email for updates" required>
+          <input id="notifyPhone" type="tel" placeholder="Phone for SMS (optional)">
+          <button class="ghost-btn">Set alerts</button>
+        </form>
+        <div id="notifyList" class="mini-list"></div>
+      </div>
+    </section>
+
+    <section class="panel glass map-panel">
+      <div class="map-head">
+        <div>
+          <p class="label">Live lane view</p>
+          <h3>Network pulse</h3>
+        </div>
+        <button class="ghost-btn small" id="refreshSeed">Reset demo data</button>
+      </div>
+      <div class="map-placeholder">
+        <div class="orbit orbit-purple"></div>
+        <div class="orbit orbit-orange"></div>
+        <div class="dot dot-orange"></div>
+        <div class="dot dot-purple"></div>
+        <div class="dot dot-white"></div>
+        <p class="muted">Map placeholder — plug in Mapbox/Leaflet for live view.</p>
+      </div>
+    </section>
   </div>
 
   <aside class="admin-drawer" id="adminDrawer">
@@ -108,6 +242,7 @@
         <form id="createForm" class="grid-form">
           <input name="tracking" placeholder="Tracking number" required>
           <input name="recipient" placeholder="Recipient name" required>
+          <input name="email" type="email" placeholder="Recipient email" required>
           <input name="origin" placeholder="Origin hub" required>
           <input name="destination" placeholder="Destination hub" required>
           <input name="eta" type="date" placeholder="ETA" required>
@@ -121,6 +256,10 @@
           </select>
           <input name="location" placeholder="Current location" required>
           <input name="note" placeholder="Scan note / comment">
+          <label class="row gap" style="grid-column: span 2; align-items:center;">
+            <input type="checkbox" name="sendEmail" checked style="width:auto;accent-color:var(--orange);">
+            <span class="mini">Send tracking email to recipient after saving</span>
+          </label>
           <button class="solid-btn full">Save shipment</button>
         </form>
       </section>

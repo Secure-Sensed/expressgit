@@ -1,4 +1,6 @@
 const STORAGE_KEY = "expressx-shipments";
+const PICKUP_KEY = "expressx-pickups";
+const NOTIFY_KEY = "expressx-notify";
 const ADMIN_KEY = "expressx-admin-auth";
 const PASS_PHRASE = "expressx-admin";
 
@@ -11,9 +13,19 @@ const STATUS_ORDER = [
   "Exception"
 ];
 
+const LOCATIONS = [
+  { name: "ExpressX Hub - Memphis SuperHub", city: "Memphis", zip: "38118", type: "Hub", hours: "24/7" },
+  { name: "ExpressX ShipCenter - Seattle North", city: "Seattle", zip: "98109", type: "ShipCenter", hours: "8a-8p" },
+  { name: "ExpressX Office - Austin Domain", city: "Austin", zip: "78758", type: "Office", hours: "9a-7p" },
+  { name: "ExpressX OnSite - Brooklyn Atlantic", city: "Brooklyn", zip: "11217", type: "OnSite", hours: "9a-9p" },
+  { name: "ExpressX ShipCenter - Vancouver South", city: "Vancouver", zip: "V5X", type: "ShipCenter", hours: "8a-6p" },
+  { name: "ExpressX Office - Toronto West", city: "Toronto", zip: "M5V", type: "Office", hours: "9a-7p" }
+];
+
 const elements = {
   form: document.getElementById("trackForm"),
   trackingInput: document.getElementById("trackingInput"),
+  trackingMulti: document.getElementById("trackingMulti"),
   resultTracking: document.getElementById("resultTracking"),
   resultStatus: document.getElementById("resultStatus"),
   resultDestination: document.getElementById("resultDestination"),
@@ -25,9 +37,49 @@ const elements = {
   outForDeliveryCount: document.getElementById("outForDeliveryCount"),
   deliveredCount: document.getElementById("deliveredCount"),
   laneList: document.getElementById("laneList"),
+  multiList: document.getElementById("multiList"),
+  refreshLane: document.getElementById("refreshLane"),
+  resetSeed: document.getElementById("resetSeed"),
   refreshSeed: document.getElementById("refreshSeed"),
+  rateForm: document.getElementById("rateForm"),
+  rateOrigin: document.getElementById("rateOrigin"),
+  rateDest: document.getElementById("rateDest"),
+  rateWeight: document.getElementById("rateWeight"),
+  rateService: document.getElementById("rateService"),
+  ratePrice: document.getElementById("ratePrice"),
+  rateEta: document.getElementById("rateEta"),
+  pickupForm: document.getElementById("pickupForm"),
+  pickupName: document.getElementById("pickupName"),
+  pickupAddr: document.getElementById("pickupAddr"),
+  pickupDate: document.getElementById("pickupDate"),
+  pickupWindow: document.getElementById("pickupWindow"),
+  pickupList: document.getElementById("pickupList"),
+  holdForm: document.getElementById("holdForm"),
+  holdTracking: document.getElementById("holdTracking"),
+  holdLocation: document.getElementById("holdLocation"),
+  instructionForm: document.getElementById("instructionForm"),
+  instTracking: document.getElementById("instTracking"),
+  instNote: document.getElementById("instNote"),
+  returnForm: document.getElementById("returnForm"),
+  returnTracking: document.getElementById("returnTracking"),
+  returnEmail: document.getElementById("returnEmail"),
+  manageFeed: document.getElementById("manageFeed"),
+  locForm: document.getElementById("locForm"),
+  locQuery: document.getElementById("locQuery"),
+  locList: document.getElementById("locList"),
+  notifyForm: document.getElementById("notifyForm"),
+  notifyTracking: document.getElementById("notifyTracking"),
+  notifyEmail: document.getElementById("notifyEmail"),
+  notifyPhone: document.getElementById("notifyPhone"),
+  notifyList: document.getElementById("notifyList"),
   openAdmin: document.getElementById("openAdmin"),
   createCTA: document.getElementById("createCTA"),
+  actionCreate: document.getElementById("actionCreate"),
+  scrollPickup: document.getElementById("scrollPickup"),
+  scrollHold: document.getElementById("scrollHold"),
+  scrollInstructions: document.getElementById("scrollInstructions"),
+  scrollNotify: document.getElementById("scrollNotify"),
+  makeReturn: document.getElementById("makeReturn"),
   closeAdmin: document.getElementById("closeAdmin"),
   adminDrawer: document.getElementById("adminDrawer"),
   scrim: document.getElementById("scrim"),
@@ -40,39 +92,77 @@ const elements = {
 };
 
 let shipments = [];
+let pickups = [];
+let notifications = [];
+let manageEvents = [];
 
 init();
 
 function init() {
   shipments = loadShipments();
+  pickups = loadJson(PICKUP_KEY, []);
+  notifications = loadJson(NOTIFY_KEY, []);
+
   renderStats();
   renderLaneList();
+  renderMultiList();
+  renderPickups();
+  renderNotifications();
+  renderLocations(LOCATIONS);
   wireEvents();
 }
 
 function wireEvents() {
   elements.form.addEventListener("submit", handleTrack);
+  elements.refreshLane.addEventListener("click", () => renderLaneList());
+  elements.resetSeed.addEventListener("click", resetSeed);
   elements.refreshSeed.addEventListener("click", resetSeed);
+
+  elements.rateForm.addEventListener("submit", handleRate);
+
+  elements.pickupForm.addEventListener("submit", handlePickup);
+  elements.holdForm.addEventListener("submit", handleHold);
+  elements.instructionForm.addEventListener("submit", handleInstruction);
+  elements.returnForm.addEventListener("submit", handleReturn);
+
+  elements.locForm.addEventListener("submit", handleLocationSearch);
+  elements.notifyForm.addEventListener("submit", handleNotify);
+
   elements.openAdmin.addEventListener("click", openDrawer);
   elements.createCTA.addEventListener("click", openDrawer);
+  elements.actionCreate.addEventListener("click", openDrawer);
   elements.closeAdmin.addEventListener("click", closeDrawer);
   elements.scrim.addEventListener("click", closeDrawer);
   elements.authForm.addEventListener("submit", handleAuth);
   elements.createForm.addEventListener("submit", handleCreate);
-  renderAdminList();
+
+  elements.scrollPickup.addEventListener("click", () => scrollToId("pickup"));
+  elements.scrollHold.addEventListener("click", () => scrollToId("manage"));
+  elements.scrollInstructions.addEventListener("click", () => scrollToId("manage"));
+  elements.scrollNotify.addEventListener("click", () => scrollToId("locations"));
+  elements.makeReturn.addEventListener("click", () => scrollToId("manage"));
+
   if (localStorage.getItem(ADMIN_KEY) === "true") unlockAdmin();
 }
 
 function handleTrack(e) {
   e.preventDefault();
-  const id = elements.trackingInput.value.trim();
-  if (!id) return;
-  const shipment = shipments.find((s) => s.tracking.toLowerCase() === id.toLowerCase());
-  if (!shipment) {
-    renderNotFound(id);
-    return;
+  const single = elements.trackingInput.value.trim();
+  const multi = elements.trackingMulti.value.trim();
+
+  if (single) {
+    const shipment = findShipment(single);
+    shipment ? renderResult(shipment) : renderNotFound(single);
   }
-  renderResult(shipment);
+
+  if (multi) {
+    const ids = multi.split(",").map((s) => s.trim()).filter(Boolean);
+    renderMultiList(ids.map(findShipment).filter(Boolean), ids);
+  }
+}
+
+function findShipment(id) {
+  return shipments.find((s) => s.tracking.toLowerCase() === id.toLowerCase());
 }
 
 function renderResult(shipment) {
@@ -135,7 +225,7 @@ function renderStats() {
 function renderLaneList() {
   const sorted = [...shipments].sort((a, b) => new Date(b.eta) - new Date(a.eta));
   elements.laneList.innerHTML = sorted
-    .slice(0, 4)
+    .slice(0, 5)
     .map(
       (s) => `
       <div class="lane">
@@ -147,6 +237,168 @@ function renderLaneList() {
       </div>
     `
     )
+    .join("");
+}
+
+function renderMultiList(list = shipments, ids) {
+  const html = list
+    .map(
+      (s) => `
+      <div class="list-item">
+        <strong>${s.tracking}</strong>
+        <div class="mini">Dest: ${s.destination} • Status: ${s.status} • ETA ${formatDate(s.eta)}</div>
+      </div>
+    `
+    )
+    .join("");
+  elements.multiList.innerHTML = html || `<p class="muted">No matches${ids ? " for " + ids.join(", ") : ""}.</p>`;
+}
+
+function handleRate(e) {
+  e.preventDefault();
+  const origin = elements.rateOrigin.value.trim();
+  const dest = elements.rateDest.value.trim();
+  const weight = parseFloat(elements.rateWeight.value) || 0;
+  const service = elements.rateService.value;
+  const quote = computeRate(origin, dest, weight, service);
+  elements.ratePrice.textContent = `$${quote.price.toFixed(2)}`;
+  elements.rateEta.textContent = quote.eta;
+}
+
+function computeRate(origin, dest, weight, service) {
+  const zone = origin.slice(0, 3).toUpperCase() === dest.slice(0, 3).toUpperCase() ? 2 : 5;
+  const base = service === "Priority Overnight" ? 24 : service === "2Day" ? 14 : 8;
+  const factor = service === "Priority Overnight" ? 1.2 : service === "2Day" ? 0.9 : 0.65;
+  const price = base + weight * factor + zone * 0.7;
+  const days = service === "Priority Overnight" ? 1 : service === "2Day" ? 2 : 5;
+  return {
+    price,
+    eta: `Est. transit: ${days}-${days + 1} business days`
+  };
+}
+
+function handlePickup(e) {
+  e.preventDefault();
+  const item = {
+    name: elements.pickupName.value,
+    addr: elements.pickupAddr.value,
+    date: elements.pickupDate.value,
+    window: elements.pickupWindow.value
+  };
+  pickups.unshift(item);
+  saveJson(PICKUP_KEY, pickups);
+  renderPickups();
+  addManageEvent(`Pickup scheduled for ${item.date} at ${item.window}`, item.addr);
+  elements.pickupForm.reset();
+}
+
+function renderPickups() {
+  if (!pickups.length) {
+    elements.pickupList.innerHTML = `<p class="muted">No pickups scheduled.</p>`;
+    return;
+  }
+  elements.pickupList.innerHTML = pickups
+    .slice(0, 5)
+    .map((p) => `<div class="mini-item">Pickup ${p.date} (${p.window}) — ${p.addr} • ${p.name}</div>`)
+    .join("");
+}
+
+function handleHold(e) {
+  e.preventDefault();
+  const track = elements.holdTracking.value.trim();
+  const loc = elements.holdLocation.value.trim();
+  const shipment = findShipment(track);
+  if (!shipment) return alert("Tracking not found.");
+  shipment.status = "Exception";
+  shipment.location = `Hold at ${loc}`;
+  shipment.events.unshift({ title: "Hold at Location", location: loc, note: "Customer requested hold", time: new Date().toISOString() });
+  saveShipments();
+  renderResult(shipment);
+  renderLaneList();
+  addManageEvent(`Hold at location set for ${track}`, loc);
+  elements.holdForm.reset();
+}
+
+function handleInstruction(e) {
+  e.preventDefault();
+  const track = elements.instTracking.value.trim();
+  const note = elements.instNote.value.trim();
+  const shipment = findShipment(track);
+  if (!shipment) return alert("Tracking not found.");
+  shipment.events.unshift({ title: "Delivery Instructions", location: shipment.location || shipment.destination, note, time: new Date().toISOString() });
+  saveShipments();
+  renderResult(shipment);
+  addManageEvent(`Instructions added for ${track}`, note);
+  elements.instructionForm.reset();
+}
+
+function handleReturn(e) {
+  e.preventDefault();
+  const track = elements.returnTracking.value.trim();
+  const email = elements.returnEmail.value.trim();
+  const shipment = findShipment(track);
+  if (!shipment) return alert("Tracking not found.");
+  shipment.events.unshift({ title: "Return Label Sent", location: shipment.destination, note: `Sent to ${email}`, time: new Date().toISOString() });
+  saveShipments();
+  renderResult(shipment);
+  addManageEvent(`Return label sent for ${track}`, email);
+  elements.returnForm.reset();
+}
+
+function handleLocationSearch(e) {
+  e.preventDefault();
+  const query = elements.locQuery.value.trim().toLowerCase();
+  if (!query) return renderLocations(LOCATIONS);
+  const matches = LOCATIONS.filter((loc) => loc.city.toLowerCase().includes(query) || loc.zip.toLowerCase().includes(query));
+  renderLocations(matches);
+}
+
+function renderLocations(list) {
+  elements.locList.innerHTML =
+    list
+      .map(
+        (l) => `
+      <div class="list-item">
+        <strong>${l.name}</strong>
+        <div class="mini">${l.city} ${l.zip} • ${l.type} • Hours ${l.hours}</div>
+      </div>
+    `
+      )
+      .join("") || `<p class="muted">No locations match.</p>`;
+}
+
+function handleNotify(e) {
+  e.preventDefault();
+  const item = {
+    tracking: elements.notifyTracking.value.trim(),
+    email: elements.notifyEmail.value.trim(),
+    phone: elements.notifyPhone.value.trim()
+  };
+  notifications.unshift(item);
+  saveJson(NOTIFY_KEY, notifications);
+  renderNotifications();
+  addManageEvent(`Alerts set for ${item.tracking || "all shipments"}`, item.email || item.phone);
+  elements.notifyForm.reset();
+}
+
+function renderNotifications() {
+  if (!notifications.length) {
+    elements.notifyList.innerHTML = `<p class="muted">No notification rules.</p>`;
+    return;
+  }
+  elements.notifyList.innerHTML = notifications
+    .slice(0, 5)
+    .map(
+      (n) => `<div class="mini-item">Alerts: ${n.tracking || "All"} → ${n.email}${n.phone ? " / " + n.phone : ""}</div>`
+    )
+    .join("");
+}
+
+function addManageEvent(title, detail) {
+  manageEvents.unshift({ title, detail, time: new Date().toISOString() });
+  elements.manageFeed.innerHTML = manageEvents
+    .slice(0, 5)
+    .map((m) => `<div class="mini-item">${formatDateTime(m.time)} — ${m.title}${m.detail ? " • " + m.detail : ""}</div>`)
     .join("");
 }
 
@@ -179,7 +431,8 @@ function handleCreate(e) {
   e.preventDefault();
   const form = new FormData(elements.createForm);
   const payload = Object.fromEntries(form.entries());
-  const existing = shipments.find((s) => s.tracking.toLowerCase() === payload.tracking.toLowerCase());
+  const sendEmail = form.get("sendEmail") === "on";
+  const existing = findShipment(payload.tracking);
   const event = {
     title: payload.status,
     location: payload.location,
@@ -190,6 +443,7 @@ function handleCreate(e) {
   if (existing) {
     Object.assign(existing, {
       recipient: payload.recipient,
+      recipientEmail: payload.email,
       origin: payload.origin,
       destination: payload.destination,
       eta: payload.eta,
@@ -201,6 +455,7 @@ function handleCreate(e) {
     shipments.unshift({
       tracking: payload.tracking,
       recipient: payload.recipient,
+      recipientEmail: payload.email,
       origin: payload.origin,
       destination: payload.destination,
       eta: payload.eta,
@@ -210,9 +465,14 @@ function handleCreate(e) {
     });
   }
 
+  if (sendEmail) {
+    sendTrackingEmail(payload.tracking, payload.email, payload.destination);
+  }
+
   saveShipments();
   renderStats();
   renderLaneList();
+  renderMultiList();
   renderAdminList();
   renderResult(existing || shipments[0]);
   elements.createForm.reset();
@@ -230,6 +490,7 @@ function renderAdminList() {
         <strong>${s.tracking}</strong>
         <div class="mini">${s.origin} → ${s.destination} • ETA ${formatDate(s.eta)}</div>
         <div class="mini">Status: ${s.status} @ ${s.location || "—"}</div>
+        <div class="mini">Recipient: ${s.recipient || "—"} • ${s.recipientEmail || "no email"}</div>
         <button class="ghost-btn small" data-track="${s.tracking}">Quick update</button>
       </div>
     `
@@ -242,7 +503,7 @@ function renderAdminList() {
 }
 
 function quickUpdate(tracking) {
-  const shipment = shipments.find((s) => s.tracking === tracking);
+  const shipment = findShipment(tracking);
   if (!shipment) return;
   const status = prompt("New status (Created / In Transit / At Destination / Out for Delivery / Delivered / Exception):", shipment.status);
   if (!status) return;
@@ -259,6 +520,7 @@ function quickUpdate(tracking) {
   saveShipments();
   renderStats();
   renderLaneList();
+  renderMultiList();
   renderAdminList();
   renderResult(shipment);
 }
@@ -270,6 +532,7 @@ function resetSeed() {
   renderLaneList();
   renderTimeline(shipments[0].events);
   renderResult(shipments[0]);
+  renderMultiList();
 }
 
 function loadShipments() {
@@ -290,11 +553,39 @@ function saveShipments(data = shipments) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+function sendTrackingEmail(tracking, email, destination) {
+  if (!email) return;
+  const subject = encodeURIComponent(`Your ExpressX tracking number ${tracking}`);
+  const body = encodeURIComponent(
+    `Hi,\n\nYour shipment is on the way.\nTracking: ${tracking}\nDestination: ${destination || "—"}\nTrack here: ${location.href} (enter the number on the page)\n\nThank you,\nExpressX`
+  );
+  const mailto = `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
+  const a = document.createElement("a");
+  a.href = mailto;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function loadJson(key, fallback) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || fallback;
+  } catch (err) {
+    return fallback;
+  }
+}
+
+function saveJson(key, val) {
+  localStorage.setItem(key, JSON.stringify(val));
+}
+
 function seedData() {
   return [
     {
       tracking: "EXX123456789US",
       recipient: "Taylor Reed",
+      recipientEmail: "taylor@example.com",
       origin: "Memphis SuperHub",
       destination: "Seattle, WA",
       eta: futureDate(2),
@@ -310,6 +601,7 @@ function seedData() {
     {
       tracking: "EXX987654321US",
       recipient: "Brooklyn Chavez",
+      recipientEmail: "brooklyn@example.com",
       origin: "Newark, NJ",
       destination: "Austin, TX",
       eta: futureDate(3),
@@ -323,6 +615,7 @@ function seedData() {
     {
       tracking: "EXX555222888CA",
       recipient: "Noah Singh",
+      recipientEmail: "noah@example.com",
       origin: "Toronto, ON",
       destination: "Vancouver, BC",
       eta: futureDate(1),
@@ -335,12 +628,25 @@ function seedData() {
         { title: "In Transit", location: "Calgary, AB", note: "Linehaul scan", time: isoHoursAgo(22) },
         { title: "Created", location: "Toronto, ON", note: "Shipment created", time: isoHoursAgo(30) }
       ]
+    },
+    {
+      tracking: "EXX741852963US",
+      recipient: "Imani Scott",
+      recipientEmail: "imani@example.com",
+      origin: "Los Angeles, CA",
+      destination: "Denver, CO",
+      eta: futureDate(4),
+      status: "In Transit",
+      location: "Phoenix, AZ",
+      events: [
+        { title: "In Transit", location: "Phoenix, AZ", note: "Linehaul scanned", time: isoHoursAgo(7) },
+        { title: "Created", location: "Los Angeles, CA", note: "Label generated", time: isoHoursAgo(16) }
+      ]
     }
   ];
 }
 
 function setStatusChip(el, status) {
-  el.classList.remove("exception");
   if (status === "Exception" || status === "Not found") {
     el.style.background = "rgba(255,99,132,0.18)";
     el.style.color = "#ffc8d6";
@@ -368,4 +674,9 @@ function isoHoursAgo(hours) {
   const d = new Date();
   d.setHours(d.getHours() - hours);
   return d.toISOString();
+}
+
+function scrollToId(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
