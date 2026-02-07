@@ -25,10 +25,24 @@ const TAB_COPY = {
   }
 };
 
+const AUTH_COPY = {
+  signup: {
+    submit: "Create Account",
+    title: "Create your account"
+  },
+  login: {
+    submit: "Log In",
+    title: "Welcome back"
+  }
+};
+
 const state = {
   mode: "tracking",
   isLoading: false,
-  hasSearched: false
+  hasSearched: false,
+  authMode: "signup",
+  authLoading: false,
+  sessionUser: null
 };
 
 const elements = {
@@ -40,7 +54,21 @@ const elements = {
   submitButton: document.getElementById("submitButton"),
   formMessage: document.getElementById("formMessage"),
   resultsSection: document.getElementById("resultsSection"),
-  resultsList: document.getElementById("resultsList")
+  resultsList: document.getElementById("resultsList"),
+  authButton: document.getElementById("authButton"),
+  sessionGreeting: document.getElementById("sessionGreeting"),
+  logoutButton: document.getElementById("logoutButton"),
+  authModal: document.getElementById("authModal"),
+  authClose: document.getElementById("authClose"),
+  authForm: document.getElementById("authForm"),
+  authTitle: document.getElementById("authTitle"),
+  authName: document.getElementById("authName"),
+  authEmail: document.getElementById("authEmail"),
+  authPassword: document.getElementById("authPassword"),
+  authSubmit: document.getElementById("authSubmit"),
+  authMessage: document.getElementById("authMessage"),
+  nameGroup: document.getElementById("nameGroup"),
+  authModeButtons: document.querySelectorAll(".auth-switch-btn")
 };
 
 init();
@@ -48,7 +76,9 @@ init();
 function init() {
   wireEvents();
   applyMode("tracking");
+  setAuthMode("signup");
   renderResults([]);
+  void hydrateSession();
 }
 
 function wireEvents() {
@@ -57,6 +87,25 @@ function wireEvents() {
   });
 
   elements.form.addEventListener("submit", onSubmit);
+
+  elements.authButton.addEventListener("click", openAuthModal);
+  elements.logoutButton.addEventListener("click", onLogout);
+  elements.authClose.addEventListener("click", closeAuthModal);
+  elements.authModal.addEventListener("click", (event) => {
+    if (event.target === elements.authModal) closeAuthModal();
+  });
+
+  elements.authModeButtons.forEach((button) => {
+    button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
+  });
+
+  elements.authForm.addEventListener("submit", onAuthSubmit);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.authModal.classList.contains("is-hidden")) {
+      closeAuthModal();
+    }
+  });
 }
 
 function applyMode(mode) {
@@ -99,7 +148,7 @@ async function onSubmit(event) {
 
   try {
     state.hasSearched = true;
-    const response = await fetch("/api/track", {
+    const payload = await fetchJson("/api/track", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -109,12 +158,6 @@ async function onSubmit(event) {
         queries
       })
     });
-
-    const payload = await response.json();
-
-    if (!response.ok) {
-      throw new Error(payload.error || "Unable to fetch tracking data right now.");
-    }
 
     renderResults(payload.results || []);
 
@@ -275,4 +318,172 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function openAuthModal() {
+  showAuthMessage("", "");
+  elements.authModal.classList.remove("is-hidden");
+  elements.authModal.setAttribute("aria-hidden", "false");
+  if (state.authMode === "signup") {
+    elements.authName.focus();
+  } else {
+    elements.authEmail.focus();
+  }
+}
+
+function closeAuthModal() {
+  elements.authModal.classList.add("is-hidden");
+  elements.authModal.setAttribute("aria-hidden", "true");
+}
+
+function setAuthMode(mode) {
+  if (!AUTH_COPY[mode]) return;
+  state.authMode = mode;
+
+  elements.authModeButtons.forEach((button) => {
+    const active = button.dataset.authMode === mode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+
+  elements.authTitle.textContent = AUTH_COPY[mode].title;
+  elements.authSubmit.textContent = AUTH_COPY[mode].submit;
+
+  if (mode === "signup") {
+    elements.nameGroup.classList.remove("is-hidden");
+    elements.authPassword.setAttribute("autocomplete", "new-password");
+  } else {
+    elements.nameGroup.classList.add("is-hidden");
+    elements.authPassword.setAttribute("autocomplete", "current-password");
+  }
+
+  showAuthMessage("", "");
+}
+
+function setAuthLoading(value) {
+  state.authLoading = value;
+  elements.authSubmit.disabled = value;
+  elements.authSubmit.textContent = value ? "Please wait..." : AUTH_COPY[state.authMode].submit;
+}
+
+function showAuthMessage(text, type) {
+  elements.authMessage.textContent = text;
+  elements.authMessage.className = "auth-message";
+  if (type) elements.authMessage.classList.add(type);
+}
+
+async function onAuthSubmit(event) {
+  event.preventDefault();
+
+  if (state.authLoading) return;
+
+  const name = elements.authName.value.trim();
+  const email = elements.authEmail.value.trim().toLowerCase();
+  const password = elements.authPassword.value;
+
+  if (!isEmail(email)) {
+    showAuthMessage("Enter a valid email address.", "error");
+    return;
+  }
+
+  if (password.length < 8) {
+    showAuthMessage("Password must be at least 8 characters.", "error");
+    return;
+  }
+
+  if (state.authMode === "signup" && name.length < 2) {
+    showAuthMessage("Enter your full name.", "error");
+    return;
+  }
+
+  setAuthLoading(true);
+  showAuthMessage(state.authMode === "signup" ? "Creating your account..." : "Signing you in...", "");
+
+  try {
+    const payload = await fetchJson(`/api/auth/${state.authMode}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password
+      })
+    });
+
+    updateSessionUI(payload.user || null);
+    showAuthMessage(payload.message || "Authentication successful.", "success");
+    elements.authForm.reset();
+
+    setTimeout(() => {
+      closeAuthModal();
+    }, 500);
+  } catch (error) {
+    showAuthMessage(error.message || "Authentication failed.", "error");
+  } finally {
+    setAuthLoading(false);
+  }
+}
+
+async function hydrateSession() {
+  try {
+    const payload = await fetchJson("/api/auth/session", {
+      method: "GET"
+    });
+
+    if (payload.loggedIn && payload.user) {
+      updateSessionUI(payload.user);
+    } else {
+      updateSessionUI(null);
+    }
+  } catch (_error) {
+    updateSessionUI(null);
+  }
+}
+
+function updateSessionUI(user) {
+  state.sessionUser = user || null;
+
+  if (!state.sessionUser) {
+    elements.authButton.classList.remove("is-hidden");
+    elements.sessionGreeting.classList.add("is-hidden");
+    elements.logoutButton.classList.add("is-hidden");
+    elements.sessionGreeting.textContent = "";
+    return;
+  }
+
+  const name = state.sessionUser.name || state.sessionUser.email || "Account";
+  elements.authButton.classList.add("is-hidden");
+  elements.sessionGreeting.classList.remove("is-hidden");
+  elements.logoutButton.classList.remove("is-hidden");
+  elements.sessionGreeting.textContent = `Hi, ${name}`;
+}
+
+async function onLogout() {
+  try {
+    await fetchJson("/api/auth/logout", {
+      method: "POST"
+    });
+  } catch (_error) {
+    // Ignore errors and clear local UI state anyway.
+  }
+
+  updateSessionUI(null);
+  showMessage("You have been logged out.", "success");
+}
+
+async function fetchJson(url, options) {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Request failed.");
+  }
+
+  return payload;
+}
+
+function isEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
