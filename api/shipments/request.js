@@ -1,5 +1,6 @@
 const { parseBody, getSession, toPublicUser } = require("../_auth");
 const { upsertShipment } = require("../_store");
+const crypto = require("crypto");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -25,8 +26,9 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "Request body must include shipment details." });
     }
 
-    // Associate requester information
+    // Associate requester information and generate tracking number if missing
     const shipmentInput = Object.assign({}, body, {
+      trackingNumber: String(body.trackingNumber || `TRK-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`).trim(),
       origin: String(body.origin || "Unknown").trim(),
       destination: String(body.destination || "Unknown").trim(),
       status: String(body.status || "Created").trim(),

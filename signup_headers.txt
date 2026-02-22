@@ -1,0 +1,10 @@
+HTTP/1.1 201 Created
+Cache-Control: no-store
+Set-Cookie: fdx_users=eyJ1c2VycyI6W3sibmFtZSI6IlRlc3QgVXNlciIsImVtYWlsIjoidGVzdHVzZXIrY2lAZXhhbXBsZS5jb20iLCJwYXNzd29yZEhhc2giOiIzY2NkOWUzYTA2OTZmODI4Yzc1ZTY5M2JkM2JhNDI4NDY3OGI5NWExNjI3MjFjODIxOWJiNmE3ZDg3MjQ0NTYwIiwiY3JlYXRlZEF0IjoiMjAyNi0wMi0yMlQxMToyNToyOC45NTRaIn1dfQ.9323776ae93f05edf092356b3b9795af16c4a202ca4d0e0ca5a73be552b1f869; Path=/; SameSite=Lax; Max-Age=2592000; HttpOnly
+Set-Cookie: fdx_session=eyJlbWFpbCI6InRlc3R1c2VyK2NpQGV4YW1wbGUuY29tIiwibmFtZSI6IlRlc3QgVXNlciIsImV4cCI6MTc3MjM2NDMyODk1NH0.6b1c64ed0b9f2fe372d39e227e5f27c4d826426f104211f28beacbd28883a026; Path=/; SameSite=Lax; Max-Age=604800; HttpOnly
+Content-Type: application/json; charset=utf-8
+Date: Sun, 22 Feb 2026 11:25:28 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Content-Length: 105
+
