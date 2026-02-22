@@ -21,7 +21,6 @@
         <a href="#">Shipping</a>
         <a href="#">Tracking</a>
         <a href="#">Support</a>
-        <a href="admin.html">Admin</a>
       </nav>
 
       <div class="nav-tools">
@@ -52,6 +51,53 @@
       </p>
     </div>
   </section>
+
+  <!-- Auth Modal -->
+  <div id="authModal" class="modal is-hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <button class="modal-close" type="button" aria-label="Close">✕</button>
+      
+      <div class="auth-tabs">
+        <button class="auth-tab active" type="button" data-tab="login">Sign In</button>
+        <button class="auth-tab" type="button" data-tab="signup">Sign Up</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form active">
+        <h2>Sign In</h2>
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" placeholder="••••••••" required>
+        </div>
+        <div id="loginMessage" class="form-message"></div>
+        <button type="submit" class="auth-btn">Sign In</button>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signupForm" class="auth-form">
+        <h2>Create Account</h2>
+        <div class="form-group">
+          <label for="signupName">Full Name</label>
+          <input id="signupName" type="text" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="signupEmail">Email</label>
+          <input id="signupEmail" type="email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input id="signupPassword" type="password" placeholder="••••••••" required>
+        </div>
+        <div id="signupMessage" class="form-message"></div>
+        <button type="submit" class="auth-btn">Create Account</button>
+      </form>
+    </div>
+  </div>
 
   <main class="page-main">
     <section class="track-shell" aria-label="Track shipments">

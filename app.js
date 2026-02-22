@@ -1,3 +1,204 @@
+// ============================================================================
+// Auth Modal & Session Management
+// ============================================================================
+
+let currentUser = null;
+
+const authElements = {
+  modal: document.getElementById("authModal"),
+  modalOverlay: document.querySelector("#authModal .modal-overlay"),
+  modalClose: document.querySelector("#authModal .modal-close"),
+  authTabs: document.querySelectorAll(".auth-tab"),
+  loginForm: document.getElementById("loginForm"),
+  signupForm: document.getElementById("signupForm"),
+  loginEmail: document.getElementById("loginEmail"),
+  loginPassword: document.getElementById("loginPassword"),
+  loginMessage: document.getElementById("loginMessage"),
+  signupName: document.getElementById("signupName"),
+  signupEmail: document.getElementById("signupEmail"),
+  signupPassword: document.getElementById("signupPassword"),
+  signupMessage: document.getElementById("signupMessage"),
+  authBtn: document.querySelector(".link-btn"),
+  profileBtn: document.querySelector(".icon-btn")
+};
+
+async function initAuth() {
+  try {
+    const response = await fetchJson("/api/auth/session", {
+      method: "GET"
+    });
+    if (response.user) {
+      currentUser = response.user;
+      updateAuthUI();
+    }
+  } catch (error) {
+    console.error("Failed to load session:", error);
+  }
+}
+
+function updateAuthUI() {
+  if (currentUser) {
+    authElements.authBtn.textContent = `${currentUser.name || currentUser.email}`;
+    authElements.authBtn.classList.add("authenticated");
+  } else {
+    authElements.authBtn.textContent = "Sign Up/Log In";
+    authElements.authBtn.classList.remove("authenticated");
+  }
+}
+
+function openAuthModal() {
+  authElements.modal.classList.remove("is-hidden");
+}
+
+function closeAuthModal() {
+  authElements.modal.classList.add("is-hidden");
+  resetAuthForms();
+}
+
+function resetAuthForms() {
+  authElements.loginForm.reset();
+  authElements.signupForm.reset();
+  authElements.loginMessage.textContent = "";
+  authElements.signupMessage.textContent = "";
+}
+
+function switchAuthTab(tab) {
+  authElements.authTabs.forEach((t) => {
+    t.classList.toggle("active", t.dataset.tab === tab);
+  });
+  
+  document.querySelectorAll(".auth-form").forEach((form) => {
+    form.classList.toggle("active", form.id === (tab === "login" ? "loginForm" : "signupForm"));
+  });
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  const email = authElements.loginEmail.value.trim();
+  const password = authElements.loginPassword.value;
+
+  if (!email || !password) {
+    showAuthMessage("loginMessage", "Please fill in all fields.", "error");
+    return;
+  }
+
+  try {
+    showAuthMessage("loginMessage", "Signing in...", "");
+    const response = await fetchJson("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password })
+    });
+
+    if (response.user) {
+      currentUser = response.user;
+      updateAuthUI();
+      closeAuthModal();
+      showAuthMessage("loginMessage", "Signed in successfully!", "success");
+    } else {
+      showAuthMessage("loginMessage", "Invalid email or password.", "error");
+    }
+  } catch (error) {
+    showAuthMessage("loginMessage", error.message || "Sign in failed.", "error");
+  }
+}
+
+async function handleSignup(event) {
+  event.preventDefault();
+  const name = authElements.signupName.value.trim();
+  const email = authElements.signupEmail.value.trim();
+  const password = authElements.signupPassword.value;
+
+  if (!name || !email || !password) {
+    showAuthMessage("signupMessage", "Please fill in all fields.", "error");
+    return;
+  }
+
+  if (password.length < 6) {
+    showAuthMessage("signupMessage", "Password must be at least 6 characters.", "error");
+    return;
+  }
+
+  try {
+    showAuthMessage("signupMessage", "Creating account...", "");
+    const response = await fetchJson("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password })
+    });
+
+    if (response.user) {
+      currentUser = response.user;
+      updateAuthUI();
+      closeAuthModal();
+      showAuthMessage("signupMessage", "Account created successfully!", "success");
+    } else {
+      showAuthMessage("signupMessage", response.error || "Sign up failed.", "error");
+    }
+  } catch (error) {
+    showAuthMessage("signupMessage", error.message || "Sign up failed.", "error");
+  }
+}
+
+function showAuthMessage(elementId, text, type) {
+  const element = document.getElementById(elementId);
+  element.textContent = text;
+  element.className = "form-message";
+  if (type) element.classList.add(type);
+}
+
+async function handleLogout() {
+  try {
+    await fetchJson("/api/auth/logout", { method: "POST" });
+    currentUser = null;
+    updateAuthUI();
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers
+    },
+    ...options
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+
+  return data;
+}
+
+// Wire up auth event listeners
+function wireAuthEvents() {
+  authElements.authBtn.addEventListener("click", () => {
+    if (currentUser) {
+      handleLogout();
+    } else {
+      openAuthModal();
+    }
+  });
+
+  authElements.modalClose.addEventListener("click", closeAuthModal);
+  authElements.modalOverlay.addEventListener("click", closeAuthModal);
+
+  authElements.authTabs.forEach((tab) => {
+    tab.addEventListener("click", () => switchAuthTab(tab.dataset.tab));
+  });
+
+  authElements.loginForm.addEventListener("submit", handleLogin);
+  authElements.signupForm.addEventListener("submit", handleSignup);
+}
+
+// ============================================================================
+// Track Form
+// ============================================================================
+
 const TAB_COPY = {
   tracking: {
     label: "Tracking number*",
@@ -45,7 +246,9 @@ const elements = {
 
 init();
 
-function init() {
+async function init() {
+  await initAuth();
+  wireAuthEvents();
   wireEvents();
   applyMode("tracking");
   renderResults([]);
@@ -99,22 +302,13 @@ async function onSubmit(event) {
 
   try {
     state.hasSearched = true;
-    const response = await fetch("/api/track", {
+    const payload = await fetchJson("/api/track", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
       body: JSON.stringify({
         mode: state.mode,
         queries
       })
     });
-
-    const payload = await response.json();
-
-    if (!response.ok) {
-      throw new Error(payload.error || "Unable to fetch tracking data right now.");
-    }
 
     renderResults(payload.results || []);
 
