@@ -3,68 +3,69 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin Panel - Shipment Management</title>
+  <title>FedEx Admin Console</title>
+  <meta name="description" content="Admin panel for managing shipment tracking data." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
-    .admin-container {
-      max-width: 1200px;
-      margin: 2rem auto;
-      padding: 0 1rem;
+    .admin-main {
+      padding-top: 42px;
     }
 
-    .admin-grid {
+    .admin-home-link {
+      color: #fff;
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .admin-home-link:hover {
+      text-decoration: underline;
+    }
+
+    .admin-layout {
+      width: min(1220px, calc(100% - 48px));
+      margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem;
-      margin-top: 2rem;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      gap: 24px;
+      align-items: flex-start;
     }
 
-    @media (max-width: 768px) {
-      .admin-grid {
-        grid-template-columns: 1fr;
-      }
+    .admin-panel {
+      background: #fff;
+      border: 1px solid #d9d9d9;
+      box-shadow: 0 7px 20px rgba(0, 0, 0, 0.07);
+      padding: 20px;
     }
 
-    .admin-card {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 2rem;
-      background: #f9f9f9;
-    }
-
-    .admin-card h2 {
-      margin-top: 0;
-      color: #333;
-    }
-
-    .admin-form label {
-      display: block;
-      margin-top: 1rem;
-      margin-bottom: 0.5rem;
+    .admin-panel h1,
+    .admin-panel h2 {
+      margin: 0 0 10px;
       font-weight: 500;
       color: #333;
     }
 
-    .admin-form input,
-    .admin-form textarea {
-      width: 100%;
-      padding: 0.75rem;
-      margin-bottom: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font: inherit;
-      box-sizing: border-box;
+    .admin-panel h1 {
+      font-size: clamp(28px, 2vw, 40px);
+      margin-bottom: 12px;
     }
 
-    .admin-form textarea {
-      min-height: 80px;
-      resize: vertical;
+    .admin-help {
+      margin: 0 0 16px;
+      color: #5b5b5b;
+      line-height: 1.4;
+      font-size: 15px;
     }
 
     .admin-message {
-      padding: 1rem;
-      margin-top: 1rem;
-      border-radius: 4px;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.35;
       display: none;
     }
 
@@ -73,386 +74,636 @@
     }
 
     .admin-message.success {
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
+      background: #e8f8ed;
+      color: #0d6a2d;
+      border: 1px solid #b9e5c6;
     }
 
     .admin-message.error {
-      background: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
+      background: #ffe9ee;
+      color: #9f1f43;
+      border: 1px solid #f6b5c5;
+    }
+
+    .admin-message.info {
+      background: #f1f6fb;
+      color: #255b86;
+      border: 1px solid #c8ddf1;
     }
 
     .shipment-list {
-      max-height: 600px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      max-height: 70vh;
+      overflow: auto;
+      border: 1px solid #e6e6e6;
     }
 
-    .shipment-item {
-      padding: 1rem;
-      border-bottom: 1px solid #eee;
+    .shipment-row {
+      width: 100%;
+      text-align: left;
+      border: none;
+      font: inherit;
+      border-bottom: 1px solid #ececec;
+      padding: 12px;
       cursor: pointer;
-      background: white;
-      transition: background 0.2s;
+      background: #fff;
+      transition: background 0.15s ease;
     }
 
-    .shipment-item:hover {
-      background: #f5f5f5;
+    .shipment-row:hover {
+      background: #f7f7f7;
     }
 
-    .shipment-item:last-child {
+    .shipment-row.active {
+      background: #efe7f9;
+    }
+
+    .shipment-row:last-child {
       border-bottom: none;
     }
 
-    .shipment-item-header {
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 0.25rem;
+    .shipment-tracking {
+      font-size: 15px;
+      font-weight: 700;
+      color: #2f2f2f;
+      margin-bottom: 4px;
+      letter-spacing: 0.02em;
     }
 
-    .shipment-item-meta {
-      font-size: 0.9rem;
+    .shipment-meta {
+      font-size: 13px;
       color: #666;
+      line-height: 1.35;
     }
 
-    .shipment-item.selected {
-      background: #e8f4f8;
+    .admin-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .admin-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .admin-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .admin-field label {
+      font-size: 13px;
+      color: #4b4b4b;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .admin-field input,
+    .admin-field textarea {
+      width: 100%;
+      border: 1px solid #cfcfcf;
+      border-radius: 6px;
+      padding: 10px;
+      font: inherit;
+      background: #fff;
+      color: #333;
+    }
+
+    .admin-field textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    .admin-field input:focus,
+    .admin-field textarea:focus {
+      outline: 2px solid rgba(77, 20, 140, 0.2);
+      border-color: #4d148c;
     }
 
     .admin-actions {
-      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
     }
 
-    .admin-actions button {
-      margin-right: 0.5rem;
-      margin-bottom: 0.5rem;
+    .admin-btn {
+      border: none;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      color: #fff;
+      background: #4d148c;
+    }
+
+    .admin-btn:hover {
+      filter: brightness(0.95);
+    }
+
+    .admin-btn.secondary {
+      background: #6e6e6e;
+    }
+
+    .admin-btn.danger {
+      background: #b4234a;
+    }
+
+    @media (max-width: 980px) {
+      .admin-layout {
+        width: calc(100% - 24px);
+        grid-template-columns: 1fr;
+      }
+
+      .admin-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-home-link {
+        font-size: 14px;
+      }
     }
   </style>
 </head>
-<body data-page="admin">
-  <header class="site-header">
-    <div class="container header-row">
-      <a class="brand" href="index.html">Global Community Initiative</a>
-      <div class="header-tools">
-        <span id="adminGreeting" class="session-greeting hidden"></span>
-        <button id="adminLogout" class="tool-link hidden" type="button">Log Out</button>
+<body>
+  <header class="site-header" role="banner">
+    <div class="container nav-row">
+      <a class="logo" href="index.html" aria-label="FedEx home">
+        <span class="fed">Fed</span><span class="ex">Ex</span>
+      </a>
+
+      <nav class="main-nav" aria-label="Primary">
+        <a href="index.html">Tracking</a>
+        <a href="admin.html" aria-current="page">Admin</a>
+      </nav>
+
+      <div class="nav-tools">
+        <a class="admin-home-link" href="index.html">Back To Tracking</a>
       </div>
     </div>
   </header>
 
-  <main>
-    <div class="admin-container">
-      <h1>Admin Panel - Shipment Management</h1>
-      <p>Manage shipment tracking codes and update their status and location. This requires an admin token.</p>
+  <div class="crumb-bar" aria-label="Breadcrumb">
+    <div class="container">
+      <span class="crumb-home">Home</span>
+      <span class="crumb-sep">›</span>
+      <span>Admin</span>
+    </div>
+  </div>
 
-      <div class="admin-grid">
-        <!-- Left: List of shipments -->
-        <div class="admin-card">
-          <h2>All Shipments</h2>
-          <div id="shipmentsList" class="shipment-list"></div>
-          <div id="shipmentMessage" class="admin-message"></div>
-        </div>
+  <main class="page-main admin-main">
+    <section class="admin-layout" aria-label="Shipment admin console">
+      <aside class="admin-panel">
+        <h2>Shipments</h2>
+        <p class="admin-help">Select a shipment to edit it, or clear the form to create a new one.</p>
 
-        <!-- Right: Update form -->
-        <div class="admin-card">
-          <h2>Update Shipment</h2>
-          <form id="updateForm" class="admin-form">
-            <label for="adminToken">Admin Token</label>
-            <input
-              id="adminToken"
-              type="password"
-              placeholder="Enter admin API token"
-              required
-            >
+        <div class="shipment-list" id="shipmentsList"></div>
+        <div class="admin-message" id="listMessage"></div>
+      </aside>
 
-            <label for="trackingNumber">Tracking Number</label>
-            <input
-              id="trackingNumber"
-              type="text"
-              placeholder="Tracking number"
-              readonly
-            >
+      <section class="admin-panel">
+        <h1>Admin Console</h1>
+        <p class="admin-help">
+          This panel writes directly to Supabase through secured admin APIs. Provide your admin token to create,
+          update, or delete shipments and their tracking events.
+        </p>
 
-            <label for="status">Status</label>
-            <input
-              id="status"
-              type="text"
-              placeholder="e.g., In Transit, Delivered, Out for Delivery, Exception"
-              required
-            >
-
-            <label for="origin">Origin</label>
-            <input
-              id="origin"
-              type="text"
-              placeholder="e.g., Memphis, TN"
-              required
-            >
-
-            <label for="destination">Destination</label>
-            <input
-              id="destination"
-              type="text"
-              placeholder="e.g., Lagos, NG"
-              required
-            >
-
-            <label for="lastLocation">Last Location</label>
-            <input
-              id="lastLocation"
-              type="text"
-              placeholder="Current location"
-              required
-            >
-
-            <label for="estimatedDelivery">Estimated Delivery (ISO format, optional)</label>
-            <input
-              id="estimatedDelivery"
-              type="datetime-local"
-            >
-
-            <label for="eventTitle">Event Title (optional)</label>
-            <input
-              id="eventTitle"
-              type="text"
-              placeholder="e.g., Arrived at FedEx hub"
-            >
-
-            <label for="eventLocation">Event Location (optional)</label>
-            <input
-              id="eventLocation"
-              type="text"
-              placeholder="e.g., Paris, FR"
-            >
-
-            <label for="eventDetails">Event Details (optional)</label>
-            <textarea
-              id="eventDetails"
-              placeholder="Additional event information"
-            ></textarea>
-
-            <div class="admin-actions">
-              <button type="submit" class="btn btn-primary">Update Shipment</button>
-              <button type="button" id="clearForm" class="btn btn-secondary">Clear</button>
+        <form id="adminForm" novalidate>
+          <div class="admin-form-grid">
+            <div class="admin-field full">
+              <label for="adminToken">Admin Token*</label>
+              <input id="adminToken" type="password" autocomplete="off" placeholder="Enter ADMIN_API_TOKEN" required>
             </div>
-          </form>
-          <div id="updateMessage" class="admin-message"></div>
-        </div>
-      </div>
-    </div>
-  </main>
 
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div>
-        <h3>Nigeria Office</h3>
-        <p>12 Adeola Odeku Street, Victoria Island, Lagos, Nigeria.</p>
-      </div>
-      <div>
-        <h3>Canada Office</h3>
-        <p>145 King Street West, Toronto, ON M5H 1J8, Canada.</p>
-      </div>
-    </div>
-  </footer>
+            <div class="admin-field">
+              <label for="trackingNumber">Tracking Number*</label>
+              <input id="trackingNumber" type="text" placeholder="e.g. 771975185243" required>
+            </div>
+
+            <div class="admin-field">
+              <label for="status">Status*</label>
+              <input id="status" type="text" placeholder="e.g. In Transit" required>
+            </div>
+
+            <div class="admin-field">
+              <label for="referenceNumber">Reference Number</label>
+              <input id="referenceNumber" type="text" placeholder="e.g. REF-INTL-1001">
+            </div>
+
+            <div class="admin-field">
+              <label for="tcn">TCN</label>
+              <input id="tcn" type="text" placeholder="e.g. TCN-99450001">
+            </div>
+
+            <div class="admin-field">
+              <label for="origin">Origin*</label>
+              <input id="origin" type="text" placeholder="e.g. Memphis, TN" required>
+            </div>
+
+            <div class="admin-field">
+              <label for="destination">Destination*</label>
+              <input id="destination" type="text" placeholder="e.g. Lagos, NG" required>
+            </div>
+
+            <div class="admin-field">
+              <label for="lastLocation">Last Location*</label>
+              <input id="lastLocation" type="text" placeholder="Current shipment location" required>
+            </div>
+
+            <div class="admin-field">
+              <label for="estimatedDelivery">Estimated Delivery</label>
+              <input id="estimatedDelivery" type="datetime-local">
+            </div>
+
+            <div class="admin-field">
+              <label for="podDeliveredAt">POD Delivered At</label>
+              <input id="podDeliveredAt" type="datetime-local">
+            </div>
+
+            <div class="admin-field">
+              <label for="podReceivedBy">POD Received By</label>
+              <input id="podReceivedBy" type="text" placeholder="Recipient name">
+            </div>
+
+            <div class="admin-field">
+              <label for="podSignature">POD Signature</label>
+              <input id="podSignature" type="text" placeholder="Signature value">
+            </div>
+
+            <div class="admin-field">
+              <label for="eventTitle">Event Title</label>
+              <input id="eventTitle" type="text" placeholder="e.g. Departed FedEx facility">
+            </div>
+
+            <div class="admin-field">
+              <label for="eventLocation">Event Location</label>
+              <input id="eventLocation" type="text" placeholder="e.g. Paris, FR">
+            </div>
+
+            <div class="admin-field full">
+              <label for="eventDetails">Event Details</label>
+              <textarea id="eventDetails" placeholder="Optional scan details"></textarea>
+            </div>
+          </div>
+
+          <div class="admin-actions">
+            <button type="submit" class="admin-btn">Save Shipment</button>
+            <button type="button" id="deleteShipment" class="admin-btn danger">Delete Shipment</button>
+            <button type="button" id="clearForm" class="admin-btn secondary">Clear Form</button>
+            <button type="button" id="reloadList" class="admin-btn secondary">Reload List</button>
+          </div>
+        </form>
+
+        <div class="admin-message" id="formMessage"></div>
+      </section>
+    </section>
+  </main>
 
   <script>
     const state = {
       shipments: [],
-      selectedTracking: null,
-      adminToken: localStorage.getItem('adminToken') || ''
+      selectedTracking: "",
+      adminToken: localStorage.getItem("adminToken") || ""
     };
 
-    const shipmentsList = document.getElementById('shipmentsList');
-    const shipmentMessage = document.getElementById('shipmentMessage');
-    const updateForm = document.getElementById('updateForm');
-    const updateMessage = document.getElementById('updateMessage');
-    const adminToken = document.getElementById('adminToken');
-    const trackingNumber = document.getElementById('trackingNumber');
-    const clearFormBtn = document.getElementById('clearForm');
-    const adminGreeting = document.getElementById('adminGreeting');
-    const adminLogout = document.getElementById('adminLogout');
+    const elements = {
+      shipmentsList: document.getElementById("shipmentsList"),
+      listMessage: document.getElementById("listMessage"),
+      form: document.getElementById("adminForm"),
+      formMessage: document.getElementById("formMessage"),
+      deleteShipment: document.getElementById("deleteShipment"),
+      clearForm: document.getElementById("clearForm"),
+      reloadList: document.getElementById("reloadList"),
+      adminToken: document.getElementById("adminToken"),
+      trackingNumber: document.getElementById("trackingNumber"),
+      referenceNumber: document.getElementById("referenceNumber"),
+      tcn: document.getElementById("tcn"),
+      status: document.getElementById("status"),
+      origin: document.getElementById("origin"),
+      destination: document.getElementById("destination"),
+      lastLocation: document.getElementById("lastLocation"),
+      estimatedDelivery: document.getElementById("estimatedDelivery"),
+      podDeliveredAt: document.getElementById("podDeliveredAt"),
+      podReceivedBy: document.getElementById("podReceivedBy"),
+      podSignature: document.getElementById("podSignature"),
+      eventTitle: document.getElementById("eventTitle"),
+      eventLocation: document.getElementById("eventLocation"),
+      eventDetails: document.getElementById("eventDetails")
+    };
 
-    // Load token from localStorage
-    if (state.adminToken) {
-      adminToken.value = state.adminToken;
+    init();
+
+    function init() {
+      if (state.adminToken) {
+        elements.adminToken.value = state.adminToken;
+      }
+
+      elements.form.addEventListener("submit", onSave);
+      elements.deleteShipment.addEventListener("click", onDelete);
+      elements.clearForm.addEventListener("click", () => clearForm(true));
+      elements.reloadList.addEventListener("click", loadShipments);
+
+      loadShipments();
     }
 
-    // Fetch and list all shipments
     async function loadShipments() {
+      setMessage(elements.listMessage, "Loading shipments...", "info");
+
       try {
-        shipmentMessage.textContent = 'Loading shipments...';
-        const payload = await fetchJson('/api/shipments', { method: 'GET' });
-        state.shipments = payload.shipments || [];
-        renderShipmentsList();
-        shipmentMessage.textContent = '';
-      } catch (err) {
-        showShipmentMessage(err.message || 'Unable to load shipments.', 'error');
+        const payload = await fetchJson("/api/shipments", { method: "GET" });
+        state.shipments = Array.isArray(payload.shipments) ? payload.shipments : [];
+        renderShipments();
+        setMessage(elements.listMessage, `${state.shipments.length} shipment(s) loaded.`, "success");
+      } catch (error) {
+        state.shipments = [];
+        renderShipments();
+        setMessage(elements.listMessage, error.message || "Unable to load shipments.", "error");
       }
     }
 
-    function renderShipmentsList() {
-      shipmentsList.innerHTML = '';
+    function renderShipments() {
+      elements.shipmentsList.innerHTML = "";
+
       if (!state.shipments.length) {
-        shipmentsList.innerHTML = '<div style="padding: 1rem; color: #999;">No shipments found.</div>';
+        const empty = document.createElement("div");
+        empty.className = "shipment-row";
+        empty.textContent = "No shipments found.";
+        elements.shipmentsList.appendChild(empty);
         return;
       }
 
-      state.shipments.forEach(shipment => {
-        const item = document.createElement('div');
-        item.className = 'shipment-item';
+      state.shipments.forEach((shipment) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "shipment-row";
+
         if (state.selectedTracking === shipment.trackingNumber) {
-          item.classList.add('selected');
+          row.classList.add("active");
         }
 
-        item.innerHTML = `
-          <div class="shipment-item-header">${escapeHtml(shipment.trackingNumber)}</div>
-          <div class="shipment-item-meta">
-            Status: ${escapeHtml(shipment.status)}<br>
-            Last: ${escapeHtml(shipment.lastLocation)}
+        row.innerHTML = `
+          <div class="shipment-tracking">${escapeHtml(shipment.trackingNumber)}</div>
+          <div class="shipment-meta">
+            ${escapeHtml(shipment.status || "Unknown")}<br>
+            ${escapeHtml(shipment.lastLocation || "No location")}
           </div>
         `;
 
-        item.addEventListener('click', () => {
-          selectShipment(shipment);
-        });
-
-        shipmentsList.appendChild(item);
+        row.addEventListener("click", () => selectShipment(shipment));
+        elements.shipmentsList.appendChild(row);
       });
     }
 
     function selectShipment(shipment) {
-      state.selectedTracking = shipment.trackingNumber;
+      state.selectedTracking = shipment.trackingNumber || "";
 
-      // Update form
-      trackingNumber.value = shipment.trackingNumber;
-      document.getElementById('status').value = shipment.status || '';
-      document.getElementById('origin').value = shipment.origin || '';
-      document.getElementById('destination').value = shipment.destination || '';
-      document.getElementById('lastLocation').value = shipment.lastLocation || '';
-      document.getElementById('estimatedDelivery').value = shipment.estimatedDelivery
-        ? new Date(shipment.estimatedDelivery).toISOString().slice(0, 16)
-        : '';
-      document.getElementById('eventTitle').value = '';
-      document.getElementById('eventLocation').value = '';
-      document.getElementById('eventDetails').value = '';
+      elements.trackingNumber.value = shipment.trackingNumber || "";
+      elements.referenceNumber.value = shipment.referenceNumber || "";
+      elements.tcn.value = shipment.tcn || "";
+      elements.status.value = shipment.status || "";
+      elements.origin.value = shipment.origin || "";
+      elements.destination.value = shipment.destination || "";
+      elements.lastLocation.value = shipment.lastLocation || "";
+      elements.estimatedDelivery.value = toDatetimeLocal(shipment.estimatedDelivery);
 
-      renderShipmentsList();
-      updateMessage.textContent = '';
+      const pod = shipment.proofOfDelivery || {};
+      elements.podDeliveredAt.value = toDatetimeLocal(pod.deliveredAt);
+      elements.podReceivedBy.value = pod.receivedBy || "";
+      elements.podSignature.value = pod.signature || "";
+
+      elements.eventTitle.value = "";
+      elements.eventLocation.value = "";
+      elements.eventDetails.value = "";
+
+      renderShipments();
+      setMessage(elements.formMessage, `Selected ${shipment.trackingNumber}`, "info");
     }
 
-    function showUpdateMessage(text, type) {
-      updateMessage.textContent = text;
-      updateMessage.className = 'admin-message show ' + type;
+    function clearForm(keepToken) {
+      const token = keepToken ? elements.adminToken.value : "";
+
+      state.selectedTracking = "";
+      elements.form.reset();
+      elements.adminToken.value = token;
+      renderShipments();
+      setMessage(elements.formMessage, "", "");
     }
 
-    function showShipmentMessage(text, type) {
-      shipmentMessage.textContent = text;
-      shipmentMessage.className = 'admin-message show ' + type;
-    }
+    async function onSave(event) {
+      event.preventDefault();
 
-    clearFormBtn.addEventListener('click', () => {
-      state.selectedTracking = null;
-      trackingNumber.value = '';
-      document.getElementById('status').value = '';
-      document.getElementById('origin').value = '';
-      document.getElementById('destination').value = '';
-      document.getElementById('lastLocation').value = '';
-      document.getElementById('estimatedDelivery').value = '';
-      document.getElementById('eventTitle').value = '';
-      document.getElementById('eventLocation').value = '';
-      document.getElementById('eventDetails').value = '';
-      renderShipmentsList();
-      updateMessage.textContent = '';
-    });
-
-    updateForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const token = adminToken.value.trim();
-      const tracking = trackingNumber.value.trim();
-      const status = document.getElementById('status').value.trim();
-      const origin = document.getElementById('origin').value.trim();
-      const destination = document.getElementById('destination').value.trim();
-      const lastLocation = document.getElementById('lastLocation').value.trim();
-      const estimatedDeliveryVal = document.getElementById('estimatedDelivery').value.trim();
-      const eventTitle = document.getElementById('eventTitle').value.trim();
-      const eventLocation = document.getElementById('eventLocation').value.trim();
-      const eventDetails = document.getElementById('eventDetails').value.trim();
-
-      if (!token || !tracking || !status || !origin || !destination || !lastLocation) {
-        showUpdateMessage('All required fields must be filled.', 'error');
+      const token = elements.adminToken.value.trim();
+      if (!token) {
+        setMessage(elements.formMessage, "Admin token is required.", "error");
         return;
       }
 
-      // Save token to localStorage
-      state.adminToken = token;
-      localStorage.setItem('adminToken', token);
-
-      const shipment = {
-        trackingNumber: tracking,
-        status,
-        origin,
-        destination,
-        lastLocation,
-        estimatedDelivery: estimatedDeliveryVal ? new Date(estimatedDeliveryVal).toISOString() : null
-      };
-
-      if (eventTitle || eventLocation || eventDetails) {
-        shipment.events = [{
-          title: eventTitle || status,
-          timestamp: new Date().toISOString(),
-          location: eventLocation || lastLocation,
-          details: eventDetails
-        }];
+      let shipment;
+      try {
+        shipment = buildShipmentPayload();
+      } catch (error) {
+        setMessage(elements.formMessage, error.message || "Invalid form input.", "error");
+        return;
       }
 
+      state.adminToken = token;
+      localStorage.setItem("adminToken", token);
+
+      setMessage(elements.formMessage, "Saving shipment...", "info");
+
       try {
-        showUpdateMessage('Updating shipment...', '');
-        const payload = await fetchJson('/api/admin/upsert', {
-          method: 'POST',
+        const payload = await fetchJson("/api/admin/upsert", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-admin-token': token
+            "Content-Type": "application/json",
+            "x-admin-token": token
           },
           body: JSON.stringify({ shipment })
         });
 
-        showUpdateMessage(`Shipment ${payload.action}: ${payload.shipment.trackingNumber}`, 'success');
         await loadShipments();
-      } catch (err) {
-        showUpdateMessage(err.message || 'Unable to update shipment.', 'error');
-      }
-    });
 
-    // Load shipments on page load
-    window.addEventListener('DOMContentLoaded', () => {
-      loadShipments();
-      adminGreeting.textContent = 'Admin Panel';
-      adminGreeting.classList.remove('hidden');
-    });
+        const savedTracking = payload && payload.shipment ? payload.shipment.trackingNumber : shipment.trackingNumber;
+        const savedShipment = state.shipments.find((item) => item.trackingNumber === savedTracking);
+        if (savedShipment) {
+          selectShipment(savedShipment);
+        }
+
+        setMessage(elements.formMessage, `Shipment ${payload.action}: ${savedTracking}`, "success");
+      } catch (error) {
+        setMessage(elements.formMessage, error.message || "Unable to save shipment.", "error");
+      }
+    }
+
+    async function onDelete() {
+      const token = elements.adminToken.value.trim();
+      const trackingNumber = elements.trackingNumber.value.trim().toUpperCase();
+
+      if (!token) {
+        setMessage(elements.formMessage, "Admin token is required.", "error");
+        return;
+      }
+
+      if (!trackingNumber) {
+        setMessage(elements.formMessage, "Select or enter a tracking number to delete.", "error");
+        return;
+      }
+
+      if (!window.confirm(`Delete shipment ${trackingNumber}? This cannot be undone.`)) {
+        return;
+      }
+
+      state.adminToken = token;
+      localStorage.setItem("adminToken", token);
+
+      setMessage(elements.formMessage, "Deleting shipment...", "info");
+
+      try {
+        const payload = await fetchJson("/api/admin/delete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-token": token
+          },
+          body: JSON.stringify({ trackingNumber })
+        });
+
+        await loadShipments();
+
+        if (payload.action === "deleted") {
+          clearForm(true);
+          setMessage(elements.formMessage, `Shipment deleted: ${payload.trackingNumber}`, "success");
+        } else {
+          setMessage(elements.formMessage, `Shipment not found: ${payload.trackingNumber}`, "info");
+        }
+      } catch (error) {
+        setMessage(elements.formMessage, error.message || "Unable to delete shipment.", "error");
+      }
+    }
+
+    function buildShipmentPayload() {
+      const trackingNumber = elements.trackingNumber.value.trim().toUpperCase();
+      const status = elements.status.value.trim();
+      const origin = elements.origin.value.trim();
+      const destination = elements.destination.value.trim();
+      const lastLocation = elements.lastLocation.value.trim();
+
+      if (!trackingNumber || !status || !origin || !destination || !lastLocation) {
+        throw new Error("Tracking number, status, origin, destination, and last location are required.");
+      }
+
+      const payload = {
+        trackingNumber,
+        status,
+        origin,
+        destination,
+        lastLocation,
+        estimatedDelivery: fromDatetimeLocal(elements.estimatedDelivery.value)
+      };
+
+      const referenceNumber = elements.referenceNumber.value.trim().toUpperCase();
+      const tcn = elements.tcn.value.trim().toUpperCase();
+
+      if (referenceNumber) payload.referenceNumber = referenceNumber;
+      if (tcn) payload.tcn = tcn;
+
+      payload.proofOfDelivery = buildProofOfDelivery();
+
+      const event = buildEventPayload();
+      if (event) payload.events = [event];
+
+      return payload;
+    }
+
+    function buildProofOfDelivery() {
+      const deliveredAt = fromDatetimeLocal(elements.podDeliveredAt.value);
+      const receivedBy = elements.podReceivedBy.value.trim();
+      const signature = elements.podSignature.value.trim();
+
+      if (!deliveredAt && !receivedBy && !signature) {
+        return null;
+      }
+
+      return {
+        deliveredAt,
+        receivedBy: receivedBy || null,
+        signature: signature || null
+      };
+    }
+
+    function buildEventPayload() {
+      const title = elements.eventTitle.value.trim();
+      const location = elements.eventLocation.value.trim();
+      const details = elements.eventDetails.value.trim();
+
+      if (!title && !location && !details) {
+        return null;
+      }
+
+      return {
+        title: title || elements.status.value.trim() || "Shipment updated",
+        location: location || elements.lastLocation.value.trim() || elements.destination.value.trim(),
+        details,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    function toDatetimeLocal(isoString) {
+      if (!isoString) return "";
+
+      const date = new Date(isoString);
+      if (Number.isNaN(date.getTime())) return "";
+
+      const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+      return localDate.toISOString().slice(0, 16);
+    }
+
+    function fromDatetimeLocal(value) {
+      const input = String(value || "").trim();
+      if (!input) return null;
+
+      const date = new Date(input);
+      if (Number.isNaN(date.getTime())) {
+        throw new Error(`Invalid date/time value: ${input}`);
+      }
+
+      return date.toISOString();
+    }
+
+    function setMessage(target, text, type) {
+      target.textContent = text || "";
+      target.className = "admin-message";
+
+      if (!text) {
+        return;
+      }
+
+      target.classList.add("show");
+      if (type) {
+        target.classList.add(type);
+      }
+    }
 
     async function fetchJson(url, options) {
-      const opts = Object.assign({ credentials: 'same-origin' }, options || {});
-      const response = await fetch(url, opts);
+      const response = await fetch(url, Object.assign({ credentials: "same-origin" }, options || {}));
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload.error || 'Request failed.');
+        throw new Error(payload.error || "Request failed.");
       }
 
       return payload;
     }
 
     function escapeHtml(value) {
-      return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
   </script>
 </body>

@@ -37,9 +37,9 @@ module.exports = async function handler(req, res) {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    return res.status(400).json({
-      error: error.message || "Unable to process tracking request."
-    });
+    const message = error.message || "Unable to process tracking request.";
+    const status = message.includes("Unable to fetch tracking data") ? 500 : 400;
+    return res.status(status).json({ error: message });
   }
 };
 

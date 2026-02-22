@@ -1,453 +1,278 @@
-const AUTH_COPY = {
-  signup: {
-    submit: "Create Account",
-    title: "Create your account"
+const TAB_COPY = {
+  tracking: {
+    label: "Tracking number*",
+    hint: "Enter up to 30 of your FedEx tracking, door tag, or FedEx Office order numbers (one per line).",
+    placeholder: "e.g. 771975185243",
+    button: "TRACK"
   },
-  login: {
-    submit: "Log In",
-    title: "Welcome back"
+  reference: {
+    label: "Reference number*",
+    hint: "Enter up to 30 reference numbers (one per line).",
+    placeholder: "e.g. REF-INTL-1001",
+    button: "TRACK"
+  },
+  tcn: {
+    label: "TCN*",
+    hint: "Enter up to 30 Transportation Control Numbers (one per line).",
+    placeholder: "e.g. TCN-99450001",
+    button: "TRACK"
+  },
+  pod: {
+    label: "Tracking number*",
+    hint: "Enter up to 30 tracking numbers to obtain proof of delivery.",
+    placeholder: "e.g. 794848183811",
+    button: "GET PROOF"
   }
 };
 
 const state = {
-  authMode: "signup",
-  authLoading: false,
-  sessionUser: null,
-  updatesTimer: null,
-  updatesEmail: ""
+  mode: "tracking",
+  isLoading: false,
+  hasSearched: false
 };
 
-document.addEventListener("DOMContentLoaded", init);
+const elements = {
+  tabs: document.querySelectorAll(".tab"),
+  form: document.getElementById("trackForm"),
+  entryLabel: document.getElementById("entryLabel"),
+  entryHint: document.getElementById("entryHint"),
+  entryInput: document.getElementById("entryInput"),
+  submitButton: document.getElementById("submitButton"),
+  formMessage: document.getElementById("formMessage"),
+  resultsSection: document.getElementById("resultsSection"),
+  resultsList: document.getElementById("resultsList")
+};
+
+init();
 
 function init() {
-  markActiveNavigation();
-  forcePageTopIfNeeded();
-  wireAuth();
-  wireUtilityButtons();
-  wireSubscription();
-  void hydrateSession();
+  wireEvents();
+  applyMode("tracking");
+  renderResults([]);
 }
 
-function markActiveNavigation() {
-  const currentFile = currentFileName();
-
-  document.querySelectorAll(".global-nav a").forEach((link) => {
-    const href = (link.getAttribute("href") || "").trim();
-    if (!href) return;
-
-    const linkFile = normalizeFile(href);
-    const isHome = currentFile === "index.html" && linkFile === "index.html";
-    const isNigeria = currentFile === "nigeria.html" && linkFile === "nigeria.html";
-    const isCanada = currentFile.startsWith("canada") && linkFile === "canada.html";
-    const isDonate = currentFile === "donate.html" && linkFile === "donate.html";
-
-    if (isHome || isNigeria || isCanada || isDonate) {
-      link.classList.add("current");
-    }
+function wireEvents() {
+  elements.tabs.forEach((tab) => {
+    tab.addEventListener("click", () => applyMode(tab.dataset.mode));
   });
 
-  document.querySelectorAll(".sub-nav a").forEach((link) => {
-    const href = (link.getAttribute("href") || "").trim();
-    if (!href || href.startsWith("#")) return;
-    const linkFile = normalizeFile(href);
-    if (linkFile === currentFile) {
-      link.classList.add("current");
-    }
-  });
+  elements.form.addEventListener("submit", onSubmit);
 }
 
-function forcePageTopIfNeeded() {
-  const body = document.body;
-  if (!body || body.dataset.forceTop !== "true") return;
+function applyMode(mode) {
+  if (!TAB_COPY[mode]) return;
+  state.mode = mode;
 
-  if ("scrollRestoration" in history) {
-    history.scrollRestoration = "manual";
-  }
-
-  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-}
-
-function wireUtilityButtons() {
-  const profileButton = byId("profileButton");
-  const searchButton = byId("searchButton");
-
-  if (profileButton) {
-    profileButton.addEventListener("click", () => {
-      if (state.sessionUser) {
-        alert(`Logged in as ${state.sessionUser.name || state.sessionUser.email}`);
-      } else {
-        openAuthModal();
-      }
-    });
-  }
-
-  if (searchButton) {
-    searchButton.addEventListener("click", () => {
-      const query = prompt("Search page: home, nigeria, canada, donate");
-      if (!query) return;
-
-      const value = query.trim().toLowerCase();
-      if (value.includes("home")) location.href = "index.html";
-      else if (value.includes("nigeria")) location.href = "nigeria.html";
-      else if (value.includes("canada")) location.href = "canada.html";
-      else if (value.includes("donate")) location.href = "donate.html";
-      else alert("No matching page found.");
-    });
-  }
-}
-
-function wireAuth() {
-  const authButton = byId("authButton");
-  const logoutButton = byId("logoutButton");
-  const authClose = byId("authClose");
-  const authModal = byId("authModal");
-  const authForm = byId("authForm");
-
-  if (!authButton || !logoutButton || !authClose || !authModal || !authForm) {
-    return;
-  }
-
-  authButton.addEventListener("click", openAuthModal);
-  logoutButton.addEventListener("click", onLogout);
-  authClose.addEventListener("click", closeAuthModal);
-
-  authModal.addEventListener("click", (event) => {
-    if (event.target === authModal) closeAuthModal();
+  elements.tabs.forEach((tab) => {
+    const active = tab.dataset.mode === mode;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", String(active));
   });
 
-  document.querySelectorAll(".auth-mode").forEach((button) => {
-    button.addEventListener("click", () => {
-      setAuthMode(button.dataset.authMode);
-    });
-  });
+  elements.entryLabel.textContent = TAB_COPY[mode].label;
+  elements.entryHint.textContent = TAB_COPY[mode].hint;
+  elements.entryInput.placeholder = TAB_COPY[mode].placeholder;
+  elements.submitButton.textContent = TAB_COPY[mode].button;
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeAuthModal();
-  });
-
-  authForm.addEventListener("submit", onAuthSubmit);
-  setAuthMode("signup");
+  showMessage("", "");
 }
 
-function openAuthModal() {
-  const authModal = byId("authModal");
-  if (!authModal) return;
-
-  authModal.classList.remove("hidden");
-  authModal.setAttribute("aria-hidden", "false");
-  showAuthMessage("", "");
-
-  if (state.authMode === "signup") {
-    byId("authName")?.focus();
-  } else {
-    byId("authEmail")?.focus();
-  }
-}
-
-function closeAuthModal() {
-  const authModal = byId("authModal");
-  if (!authModal) return;
-  authModal.classList.add("hidden");
-  authModal.setAttribute("aria-hidden", "true");
-}
-
-function setAuthMode(mode) {
-  if (!AUTH_COPY[mode]) return;
-  state.authMode = mode;
-
-  document.querySelectorAll(".auth-mode").forEach((button) => {
-    const active = button.dataset.authMode === mode;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", String(active));
-  });
-
-  const authTitle = byId("authTitle");
-  const authSubmit = byId("authSubmit");
-  const authNameRow = byId("authNameRow");
-  const authPassword = byId("authPassword");
-
-  if (authTitle) authTitle.textContent = AUTH_COPY[mode].title;
-  if (authSubmit) authSubmit.textContent = AUTH_COPY[mode].submit;
-
-  if (mode === "signup") {
-    authNameRow?.classList.remove("hidden");
-    authPassword?.setAttribute("autocomplete", "new-password");
-  } else {
-    authNameRow?.classList.add("hidden");
-    authPassword?.setAttribute("autocomplete", "current-password");
-  }
-
-  showAuthMessage("", "");
-}
-
-function setAuthLoading(isLoading) {
-  state.authLoading = isLoading;
-
-  const submit = byId("authSubmit");
-  if (!submit) return;
-
-  submit.disabled = isLoading;
-  submit.textContent = isLoading ? "Please wait..." : AUTH_COPY[state.authMode].submit;
-}
-
-function showAuthMessage(text, type) {
-  const message = byId("authMessage");
-  if (!message) return;
-
-  message.textContent = text;
-  message.className = "auth-message";
-  if (type) message.classList.add(type);
-}
-
-async function onAuthSubmit(event) {
-  event.preventDefault();
-  if (state.authLoading) return;
-
-  const name = (byId("authName")?.value || "").trim();
-  const email = (byId("authEmail")?.value || "").trim().toLowerCase();
-  const password = byId("authPassword")?.value || "";
-
-  if (!isEmail(email)) {
-    showAuthMessage("Enter a valid email address.", "error");
-    return;
-  }
-
-  if (password.length < 8) {
-    showAuthMessage("Password must be at least 8 characters.", "error");
-    return;
-  }
-
-  if (state.authMode === "signup" && name.length < 2) {
-    showAuthMessage("Enter your full name.", "error");
-    return;
-  }
-
-  setAuthLoading(true);
-  showAuthMessage(state.authMode === "signup" ? "Creating account..." : "Logging in...", "");
-
-  try {
-    const payload = await fetchJson(`/api/auth/${state.authMode}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ name, email, password })
-    });
-
-    updateSessionUI(payload.user || null);
-    showAuthMessage(payload.message || "Success", "success");
-
-    const authForm = byId("authForm");
-    if (authForm) authForm.reset();
-
-    closeAuthModal();
-  } catch (error) {
-    showAuthMessage(error.message || "Authentication failed.", "error");
-  } finally {
-    setAuthLoading(false);
-  }
-}
-
-async function hydrateSession() {
-  try {
-    const payload = await fetchJson("/api/auth/session", { method: "GET" });
-    updateSessionUI(payload.loggedIn ? payload.user : null);
-  } catch (_error) {
-    updateSessionUI(null);
-  }
-}
-
-function updateSessionUI(user) {
-  state.sessionUser = user || null;
-
-  const authButton = byId("authButton");
-  const sessionGreeting = byId("sessionGreeting");
-  const logoutButton = byId("logoutButton");
-
-  if (!authButton || !sessionGreeting || !logoutButton) return;
-
-  if (!state.sessionUser) {
-    authButton.classList.remove("hidden");
-    sessionGreeting.classList.add("hidden");
-    logoutButton.classList.add("hidden");
-    sessionGreeting.textContent = "";
-    return;
-  }
-
-  authButton.classList.add("hidden");
-  sessionGreeting.classList.remove("hidden");
-  logoutButton.classList.remove("hidden");
-  sessionGreeting.textContent = `Hi, ${state.sessionUser.name || state.sessionUser.email}`;
-}
-
-async function onLogout() {
-  try {
-    await fetchJson("/api/auth/logout", { method: "POST" });
-  } catch (_error) {
-    // Ignore and clear UI anyway.
-  }
-
-  updateSessionUI(null);
-  alert("You have been logged out.");
-}
-
-function wireSubscription() {
-  const form = byId("subscriptionForm");
-  if (!form) return;
-
-  const savedEmail = localStorage.getItem("nigeria_subscription_email") || "";
-  if (savedEmail) {
-    const input = byId("subscriptionEmail");
-    if (input) input.value = savedEmail;
-    startUpdatesPolling(savedEmail);
-  }
-
-  form.addEventListener("submit", onSubscriptionSubmit);
-}
-
-async function onSubscriptionSubmit(event) {
+async function onSubmit(event) {
   event.preventDefault();
 
-  const email = (byId("subscriptionEmail")?.value || "").trim().toLowerCase();
-  const checked = Array.from(document.querySelectorAll("input[name='subscriptionCategory']:checked"));
-  const categories = checked.map((item) => item.value);
+  if (state.isLoading) return;
 
-  if (!isEmail(email)) {
-    showSubscriptionMessage("Enter a valid email address.", "error");
+  const queries = parseEntries(elements.entryInput.value);
+
+  if (!queries.length) {
+    showMessage("Enter at least one value to continue.", "error");
     return;
   }
 
-  if (!categories.length) {
-    showSubscriptionMessage("Select at least one category.", "error");
+  if (queries.length > 30) {
+    showMessage("You can only submit up to 30 entries at a time.", "error");
     return;
   }
+
+  setLoading(true);
+  showMessage("Checking shipment status...", "");
 
   try {
-    const payload = await fetchJson("/api/subscriptions/subscribe", {
+    state.hasSearched = true;
+    const response = await fetch("/api/track", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        country: "nigeria",
-        email,
-        categories
+        mode: state.mode,
+        queries
       })
     });
 
-    localStorage.setItem("nigeria_subscription_email", email);
-    showSubscriptionMessage(payload.message || "Subscribed successfully.", "success");
-    renderUpdates(payload.updates || []);
-    startUpdatesPolling(email);
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Unable to fetch tracking data right now.");
+    }
+
+    renderResults(payload.results || []);
+
+    const foundCount = (payload.results || []).filter((item) => item.found).length;
+    showMessage(`Found ${foundCount} of ${queries.length} entr${queries.length === 1 ? "y" : "ies"}.`, "success");
   } catch (error) {
-    showSubscriptionMessage(error.message || "Unable to subscribe right now.", "error");
+    renderResults([]);
+    showMessage(error.message || "Tracking request failed.", "error");
+  } finally {
+    setLoading(false);
   }
 }
 
-function startUpdatesPolling(email) {
-  state.updatesEmail = email;
-
-  if (state.updatesTimer) {
-    clearInterval(state.updatesTimer);
-  }
-
-  void fetchAndRenderUpdates(email);
-  state.updatesTimer = setInterval(() => {
-    void fetchAndRenderUpdates(state.updatesEmail);
-  }, 10000);
+function parseEntries(text) {
+  return text
+    .split(/[\n,]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
-async function fetchAndRenderUpdates(email) {
-  if (!email) return;
-
-  try {
-    const payload = await fetchJson(`/api/subscriptions/updates?email=${encodeURIComponent(email)}`, {
-      method: "GET"
-    });
-    renderUpdates(payload.updates || []);
-  } catch (_error) {
-    // Silent refresh errors.
-  }
+function setLoading(value) {
+  state.isLoading = value;
+  elements.submitButton.disabled = value;
+  elements.submitButton.textContent = value ? "PLEASE WAIT..." : TAB_COPY[state.mode].button;
 }
 
-function renderUpdates(items) {
-  const updatesList = byId("updatesList");
-  if (!updatesList) return;
+function showMessage(text, type) {
+  elements.formMessage.textContent = text;
+  elements.formMessage.className = "form-message";
+  if (type) elements.formMessage.classList.add(type);
+}
 
-  updatesList.innerHTML = "";
-
-  if (!items.length) {
-    updatesList.innerHTML = "<li>No updates available yet for this subscription.</li>";
+function renderResults(results) {
+  if (!state.hasSearched) {
+    elements.resultsSection.classList.add("is-hidden");
+    elements.resultsList.innerHTML = "";
     return;
   }
 
-  items.forEach((item) => {
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <p class="update-meta">${escapeHtml((item.category || "update").toUpperCase())} • ${escapeHtml(formatDateTime(item.createdAt))}</p>
-      <p class="update-title">${escapeHtml(item.title || "Update")}</p>
-      <p class="update-body">${escapeHtml(item.body || "")}</p>
-    `;
-    updatesList.appendChild(li);
+  elements.resultsSection.classList.remove("is-hidden");
+  elements.resultsList.innerHTML = "";
+
+  if (!results.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "No results yet. Submit a tracking request to see shipment details.";
+    elements.resultsList.appendChild(empty);
+    return;
+  }
+
+  results.forEach((result) => {
+    elements.resultsList.appendChild(buildResultCard(result));
   });
 }
 
-function showSubscriptionMessage(text, type) {
-  const message = byId("subscriptionMessage");
-  if (!message) return;
+function buildResultCard(result) {
+  const card = document.createElement("article");
+  card.className = "result-card";
 
-  message.textContent = text;
-  message.className = "subscription-message";
-  if (type) message.classList.add(type);
-}
-
-async function fetchJson(url, options) {
-  const opts = Object.assign({ credentials: "same-origin" }, options || {});
-  const response = await fetch(url, opts);
-  const payload = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(payload.error || "Request failed.");
+  if (!result.found) {
+    card.innerHTML = `
+      <div class="result-top">
+        <div>
+          <div class="result-id">${escapeHtml(result.query)}</div>
+          <div class="result-meta">No shipment matched this value.</div>
+        </div>
+        <span class="status-badge status-exception">Not Found</span>
+      </div>
+    `;
+    return card;
   }
 
-  return payload;
+  const shipment = result.shipment;
+  const statusClass = statusClassName(shipment.status);
+  const eta = shipment.estimatedDelivery ? formatDateTime(shipment.estimatedDelivery) : "Pending update";
+
+  card.innerHTML = `
+    <div class="result-top">
+      <div>
+        <div class="result-id">${escapeHtml(shipment.trackingNumber)}</div>
+        <div class="result-meta">${escapeHtml(shipment.origin)} → ${escapeHtml(shipment.destination)}</div>
+        <div class="result-meta">Estimated delivery: ${escapeHtml(eta)}</div>
+      </div>
+      <span class="status-badge ${statusClass}">${escapeHtml(shipment.status)}</span>
+    </div>
+  `;
+
+  if (state.mode === "pod") {
+    card.appendChild(buildPodBlock(shipment));
+  } else {
+    card.appendChild(buildEventList(shipment.events));
+  }
+
+  return card;
 }
 
-function currentFileName() {
-  const raw = window.location.pathname.split("/").pop() || "index.html";
-  return raw || "index.html";
+function buildPodBlock(shipment) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "event-list";
+
+  if (!shipment.proofOfDelivery) {
+    wrapper.innerHTML = `<div class="event-item">Proof of delivery is not available for this shipment yet.</div>`;
+    return wrapper;
+  }
+
+  const pod = shipment.proofOfDelivery;
+  wrapper.innerHTML = `
+    <div class="event-item"><strong>Delivered at:</strong> ${escapeHtml(formatDateTime(pod.deliveredAt))}</div>
+    <div class="event-item"><strong>Received by:</strong> ${escapeHtml(pod.receivedBy || "Recipient")}</div>
+    <div class="event-item"><strong>Signature:</strong> ${escapeHtml(pod.signature || "On file")}</div>
+  `;
+
+  return wrapper;
 }
 
-function normalizeFile(value) {
-  const clean = value.split("#")[0].split("?")[0].trim();
-  if (!clean || clean === "/") return "index.html";
-  return clean.split("/").pop() || "index.html";
+function buildEventList(events = []) {
+  const list = document.createElement("ul");
+  list.className = "event-list";
+
+  if (!events.length) {
+    const item = document.createElement("li");
+    item.className = "event-item";
+    item.textContent = "No scan events available yet.";
+    list.appendChild(item);
+    return list;
+  }
+
+  events.slice(0, 6).forEach((event) => {
+    const item = document.createElement("li");
+    item.className = "event-item";
+    item.innerHTML = `<strong>${escapeHtml(event.title)}</strong> • ${escapeHtml(formatDateTime(event.timestamp))} • ${escapeHtml(event.location)}${event.details ? ` • ${escapeHtml(event.details)}` : ""}`;
+    list.appendChild(item);
+  });
+
+  return list;
 }
 
-function isEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ""));
+function statusClassName(status = "") {
+  return `status-${String(status).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
 
 function formatDateTime(value) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "now";
+  if (Number.isNaN(date.getTime())) return "Pending";
   return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit"
   });
 }
 
 function escapeHtml(value) {
-  return String(value || "")
+  return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
-}
-
-function byId(id) {
-  return document.getElementById(id);
 }

@@ -3,125 +3,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Global Community Initiative</title>
-  <meta name="description" content="Country-specific support programs for Nigeria and Canada.">
+  <title>FedEx Tracking</title>
+  <meta name="description" content="Track your shipments by tracking number, reference number, or TCN.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body data-page="home">
-  <header class="site-header">
-    <div class="container header-row">
-      <a class="brand" href="index.html">Global Community Initiative</a>
+<body>
+  <header class="site-header" role="banner">
+    <div class="container nav-row">
+      <a class="logo" href="#" aria-label="FedEx home">
+        <span class="fed">Fed</span><span class="ex">Ex</span>
+      </a>
 
-      <nav class="global-nav" aria-label="Main navigation">
-        <a href="index.html">Home</a>
-        <a href="nigeria.html">Nigeria</a>
-        <a href="canada.html">Canada</a>
-        <a class="donate-nav" href="donate.html">Donate</a>
+      <nav class="main-nav" aria-label="Primary">
+        <a href="#">Shipping</a>
+        <a href="#">Tracking</a>
+        <a href="#">Support</a>
+        <a href="admin.html">Admin</a>
       </nav>
 
-      <div class="header-tools">
-        <button id="authButton" class="tool-link" type="button">Sign Up/Log In</button>
-        <span id="sessionGreeting" class="session-greeting hidden"></span>
-        <button id="logoutButton" class="tool-link hidden" type="button">Log Out</button>
-        <button id="profileButton" class="icon-btn" type="button" aria-label="Profile">👤</button>
-        <button id="searchButton" class="icon-btn" type="button" aria-label="Search">🔎</button>
+      <div class="nav-tools">
+        <button class="link-btn" type="button">Sign Up/Log In</button>
+        <button class="icon-btn" type="button" aria-label="Profile">
+          <span class="icon-circle"></span>
+        </button>
+        <button class="icon-btn" type="button" aria-label="Search">⌕</button>
       </div>
     </div>
   </header>
 
-  <main>
-    <section class="hero">
-      <div class="container">
-        <p class="eyebrow">Welcome</p>
-        <h1>Regional Programs for Safer, Healthier Communities</h1>
-        <p class="hero-copy">
-          Explore country-specific services, safety support, and community programs.
-          Choose your location to view the relevant resources.
-        </p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="nigeria.html">Go to Nigeria</a>
-          <a class="btn btn-secondary" href="canada.html">Go to Canada</a>
-          <a class="btn btn-donate" href="donate.html">Donate</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="container cards-grid">
-        <article class="info-card">
-          <h2>Nigeria</h2>
-          <p>News subscriptions, grants updates, and community-focused support resources.</p>
-          <a class="btn btn-primary" href="nigeria.html">Open Nigeria Page</a>
-        </article>
-
-        <article class="info-card">
-          <h2>Canada</h2>
-          <p>Health Services, Safety Support, and Community pages with dedicated navigation.</p>
-          <a class="btn btn-primary" href="canada.html">Open Canada Page</a>
-        </article>
-      </div>
-    </section>
-
-    <section class="section section-soft">
-      <div class="container">
-        <h2 class="center">Standalone Donation Access</h2>
-        <p class="center section-copy">
-          The donation page is accessible from here and from all country pages.
-        </p>
-        <div class="center-actions">
-          <a class="btn btn-donate" href="donate.html">Donate Now</a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div>
-        <h3>Nigeria Office</h3>
-        <p>12 Adeola Odeku Street, Victoria Island, Lagos, Nigeria.</p>
-      </div>
-      <div>
-        <h3>Canada Office</h3>
-        <p>145 King Street West, Toronto, ON M5H 1J8, Canada.</p>
-      </div>
-    </div>
-  </footer>
-
-  <div class="auth-modal hidden" id="authModal" aria-hidden="true">
-    <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <div class="auth-head">
-        <h2 id="authTitle">Create your account</h2>
-        <button id="authClose" class="auth-close" type="button" aria-label="Close">×</button>
-      </div>
-
-      <div class="auth-switch" role="tablist" aria-label="Authentication mode">
-        <button class="auth-mode active" data-auth-mode="signup" type="button" aria-selected="true">Sign Up</button>
-        <button class="auth-mode" data-auth-mode="login" type="button" aria-selected="false">Log In</button>
-      </div>
-
-      <form id="authForm" class="auth-form" novalidate>
-        <div id="authNameRow" class="form-row">
-          <label for="authName">Full name</label>
-          <input id="authName" type="text" autocomplete="name" placeholder="Jane Doe">
-        </div>
-        <div class="form-row">
-          <label for="authEmail">Email</label>
-          <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
-        </div>
-        <div class="form-row">
-          <label for="authPassword">Password</label>
-          <input id="authPassword" type="password" autocomplete="current-password" placeholder="At least 8 characters" required>
-        </div>
-        <button id="authSubmit" class="btn btn-primary auth-submit" type="submit">Create Account</button>
-      </form>
-
-      <p id="authMessage" class="auth-message" aria-live="polite"></p>
+  <div class="crumb-bar" aria-label="Breadcrumb">
+    <div class="container">
+      <span class="crumb-home">Home</span>
+      <span class="crumb-sep">›</span>
+      <span>Tracking</span>
     </div>
   </div>
+
+  <section class="hero" aria-label="Tracking overview">
+    <div class="hero-overlay"></div>
+    <div class="container hero-content">
+      <h1>Tracking</h1>
+      <p>
+        Our tracking tools give you control over your shipments, by helping
+        you stay informed so you can ship with confidence.
+      </p>
+    </div>
+  </section>
+
+  <main class="page-main">
+    <section class="track-shell" aria-label="Track shipments">
+      <h2>Track the way you want</h2>
+      <p class="track-intro">
+        Need the status of your shipment or proof of delivery? Enter your tracking number or
+        reference number below.
+      </p>
+
+      <div class="tabs" role="tablist" aria-label="Tracking modes">
+        <button class="tab active" type="button" role="tab" aria-selected="true" data-mode="tracking">Tracking number</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-mode="reference">Track by reference</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-mode="tcn">Track by TCN</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-mode="pod">Obtain proof of delivery</button>
+      </div>
+
+      <p id="entryHint" class="entry-note">
+        Enter up to 30 of your FedEx tracking, door tag, or FedEx Office order numbers
+        (one per line).
+      </p>
+
+      <form id="trackForm" class="track-form" novalidate>
+        <label id="entryLabel" for="entryInput">Tracking number*</label>
+        <textarea id="entryInput" rows="4" autocomplete="off" placeholder="Enter one number per line"></textarea>
+        <p class="helper-link">NEED HELP?</p>
+        <button id="submitButton" type="submit" class="track-btn">TRACK</button>
+      </form>
+
+      <div id="formMessage" class="form-message" aria-live="polite"></div>
+    </section>
+
+    <section id="resultsSection" class="results-section is-hidden" aria-live="polite" aria-label="Tracking results">
+      <h3>Tracking Results</h3>
+      <div id="resultsList" class="results-list"></div>
+    </section>
+  </main>
 
   <script src="app.js"></script>
 </body>

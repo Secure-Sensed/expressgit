@@ -10,11 +10,14 @@ module.exports = async function handler(req, res) {
 
   try {
     const shipments = await listShipments();
+
     return res.status(200).json({
       count: shipments.length,
       shipments
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message || "Unable to list shipments." });
+    return res.status(500).json({
+      error: error.message || "Unable to load shipments."
+    });
   }
 };
