@@ -1,0 +1,11 @@
+{
+  "name": "fedex-sim",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node local-dev-server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.27.0"
+  }
+}

@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "Maximum 30 queries per request." });
     }
 
-    const results = trackShipments(mode, queries);
+    const results = await trackShipments(mode, queries);
 
     return res.status(200).json({
       mode,

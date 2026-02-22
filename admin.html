@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin Panel - Shipment Management</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .admin-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 2rem;
+      background: #f9f9f9;
+    }
+
+    .admin-card h2 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    .admin-form label {
+      display: block;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .admin-form input,
+    .admin-form textarea {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font: inherit;
+      box-sizing: border-box;
+    }
+
+    .admin-form textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .admin-message {
+      padding: 1rem;
+      margin-top: 1rem;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .admin-message.show {
+      display: block;
+    }
+
+    .admin-message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .admin-message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .shipment-list {
+      max-height: 600px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .shipment-item {
+      padding: 1rem;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      background: white;
+      transition: background 0.2s;
+    }
+
+    .shipment-item:hover {
+      background: #f5f5f5;
+    }
+
+    .shipment-item:last-child {
+      border-bottom: none;
+    }
+
+    .shipment-item-header {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 0.25rem;
+    }
+
+    .shipment-item-meta {
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .shipment-item.selected {
+      background: #e8f4f8;
+    }
+
+    .admin-actions {
+      margin-top: 1rem;
+    }
+
+    .admin-actions button {
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body data-page="admin">
+  <header class="site-header">
+    <div class="container header-row">
+      <a class="brand" href="index.html">Global Community Initiative</a>
+      <div class="header-tools">
+        <span id="adminGreeting" class="session-greeting hidden"></span>
+        <button id="adminLogout" class="tool-link hidden" type="button">Log Out</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="admin-container">
+      <h1>Admin Panel - Shipment Management</h1>
+      <p>Manage shipment tracking codes and update their status and location. This requires an admin token.</p>
+
+      <div class="admin-grid">
+        <!-- Left: List of shipments -->
+        <div class="admin-card">
+          <h2>All Shipments</h2>
+          <div id="shipmentsList" class="shipment-list"></div>
+          <div id="shipmentMessage" class="admin-message"></div>
+        </div>
+
+        <!-- Right: Update form -->
+        <div class="admin-card">
+          <h2>Update Shipment</h2>
+          <form id="updateForm" class="admin-form">
+            <label for="adminToken">Admin Token</label>
+            <input
+              id="adminToken"
+              type="password"
+              placeholder="Enter admin API token"
+              required
+            >
+
+            <label for="trackingNumber">Tracking Number</label>
+            <input
+              id="trackingNumber"
+              type="text"
+              placeholder="Tracking number"
+              readonly
+            >
+
+            <label for="status">Status</label>
+            <input
+              id="status"
+              type="text"
+              placeholder="e.g., In Transit, Delivered, Out for Delivery, Exception"
+              required
+            >
+
+            <label for="origin">Origin</label>
+            <input
+              id="origin"
+              type="text"
+              placeholder="e.g., Memphis, TN"
+              required
+            >
+
+            <label for="destination">Destination</label>
+            <input
+              id="destination"
+              type="text"
+              placeholder="e.g., Lagos, NG"
+              required
+            >
+
+            <label for="lastLocation">Last Location</label>
+            <input
+              id="lastLocation"
+              type="text"
+              placeholder="Current location"
+              required
+            >
+
+            <label for="estimatedDelivery">Estimated Delivery (ISO format, optional)</label>
+            <input
+              id="estimatedDelivery"
+              type="datetime-local"
+            >
+
+            <label for="eventTitle">Event Title (optional)</label>
+            <input
+              id="eventTitle"
+              type="text"
+              placeholder="e.g., Arrived at FedEx hub"
+            >
+
+            <label for="eventLocation">Event Location (optional)</label>
+            <input
+              id="eventLocation"
+              type="text"
+              placeholder="e.g., Paris, FR"
+            >
+
+            <label for="eventDetails">Event Details (optional)</label>
+            <textarea
+              id="eventDetails"
+              placeholder="Additional event information"
+            ></textarea>
+
+            <div class="admin-actions">
+              <button type="submit" class="btn btn-primary">Update Shipment</button>
+              <button type="button" id="clearForm" class="btn btn-secondary">Clear</button>
+            </div>
+          </form>
+          <div id="updateMessage" class="admin-message"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h3>Nigeria Office</h3>
+        <p>12 Adeola Odeku Street, Victoria Island, Lagos, Nigeria.</p>
+      </div>
+      <div>
+        <h3>Canada Office</h3>
+        <p>145 King Street West, Toronto, ON M5H 1J8, Canada.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const state = {
+      shipments: [],
+      selectedTracking: null,
+      adminToken: localStorage.getItem('adminToken') || ''
+    };
+
+    const shipmentsList = document.getElementById('shipmentsList');
+    const shipmentMessage = document.getElementById('shipmentMessage');
+    const updateForm = document.getElementById('updateForm');
+    const updateMessage = document.getElementById('updateMessage');
+    const adminToken = document.getElementById('adminToken');
+    const trackingNumber = document.getElementById('trackingNumber');
+    const clearFormBtn = document.getElementById('clearForm');
+    const adminGreeting = document.getElementById('adminGreeting');
+    const adminLogout = document.getElementById('adminLogout');
+
+    // Load token from localStorage
+    if (state.adminToken) {
+      adminToken.value = state.adminToken;
+    }
+
+    // Fetch and list all shipments
+    async function loadShipments() {
+      try {
+        shipmentMessage.textContent = 'Loading shipments...';
+        const payload = await fetchJson('/api/shipments', { method: 'GET' });
+        state.shipments = payload.shipments || [];
+        renderShipmentsList();
+        shipmentMessage.textContent = '';
+      } catch (err) {
+        showShipmentMessage(err.message || 'Unable to load shipments.', 'error');
+      }
+    }
+
+    function renderShipmentsList() {
+      shipmentsList.innerHTML = '';
+      if (!state.shipments.length) {
+        shipmentsList.innerHTML = '<div style="padding: 1rem; color: #999;">No shipments found.</div>';
+        return;
+      }
+
+      state.shipments.forEach(shipment => {
+        const item = document.createElement('div');
+        item.className = 'shipment-item';
+        if (state.selectedTracking === shipment.trackingNumber) {
+          item.classList.add('selected');
+        }
+
+        item.innerHTML = `
+          <div class="shipment-item-header">${escapeHtml(shipment.trackingNumber)}</div>
+          <div class="shipment-item-meta">
+            Status: ${escapeHtml(shipment.status)}<br>
+            Last: ${escapeHtml(shipment.lastLocation)}
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          selectShipment(shipment);
+        });
+
+        shipmentsList.appendChild(item);
+      });
+    }
+
+    function selectShipment(shipment) {
+      state.selectedTracking = shipment.trackingNumber;
+
+      // Update form
+      trackingNumber.value = shipment.trackingNumber;
+      document.getElementById('status').value = shipment.status || '';
+      document.getElementById('origin').value = shipment.origin || '';
+      document.getElementById('destination').value = shipment.destination || '';
+      document.getElementById('lastLocation').value = shipment.lastLocation || '';
+      document.getElementById('estimatedDelivery').value = shipment.estimatedDelivery
+        ? new Date(shipment.estimatedDelivery).toISOString().slice(0, 16)
+        : '';
+      document.getElementById('eventTitle').value = '';
+      document.getElementById('eventLocation').value = '';
+      document.getElementById('eventDetails').value = '';
+
+      renderShipmentsList();
+      updateMessage.textContent = '';
+    }
+
+    function showUpdateMessage(text, type) {
+      updateMessage.textContent = text;
+      updateMessage.className = 'admin-message show ' + type;
+    }
+
+    function showShipmentMessage(text, type) {
+      shipmentMessage.textContent = text;
+      shipmentMessage.className = 'admin-message show ' + type;
+    }
+
+    clearFormBtn.addEventListener('click', () => {
+      state.selectedTracking = null;
+      trackingNumber.value = '';
+      document.getElementById('status').value = '';
+      document.getElementById('origin').value = '';
+      document.getElementById('destination').value = '';
+      document.getElementById('lastLocation').value = '';
+      document.getElementById('estimatedDelivery').value = '';
+      document.getElementById('eventTitle').value = '';
+      document.getElementById('eventLocation').value = '';
+      document.getElementById('eventDetails').value = '';
+      renderShipmentsList();
+      updateMessage.textContent = '';
+    });
+
+    updateForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const token = adminToken.value.trim();
+      const tracking = trackingNumber.value.trim();
+      const status = document.getElementById('status').value.trim();
+      const origin = document.getElementById('origin').value.trim();
+      const destination = document.getElementById('destination').value.trim();
+      const lastLocation = document.getElementById('lastLocation').value.trim();
+      const estimatedDeliveryVal = document.getElementById('estimatedDelivery').value.trim();
+      const eventTitle = document.getElementById('eventTitle').value.trim();
+      const eventLocation = document.getElementById('eventLocation').value.trim();
+      const eventDetails = document.getElementById('eventDetails').value.trim();
+
+      if (!token || !tracking || !status || !origin || !destination || !lastLocation) {
+        showUpdateMessage('All required fields must be filled.', 'error');
+        return;
+      }
+
+      // Save token to localStorage
+      state.adminToken = token;
+      localStorage.setItem('adminToken', token);
+
+      const shipment = {
+        trackingNumber: tracking,
+        status,
+        origin,
+        destination,
+        lastLocation,
+        estimatedDelivery: estimatedDeliveryVal ? new Date(estimatedDeliveryVal).toISOString() : null
+      };
+
+      if (eventTitle || eventLocation || eventDetails) {
+        shipment.events = [{
+          title: eventTitle || status,
+          timestamp: new Date().toISOString(),
+          location: eventLocation || lastLocation,
+          details: eventDetails
+        }];
+      }
+
+      try {
+        showUpdateMessage('Updating shipment...', '');
+        const payload = await fetchJson('/api/admin/upsert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-token': token
+          },
+          body: JSON.stringify({ shipment })
+        });
+
+        showUpdateMessage(`Shipment ${payload.action}: ${payload.shipment.trackingNumber}`, 'success');
+        await loadShipments();
+      } catch (err) {
+        showUpdateMessage(err.message || 'Unable to update shipment.', 'error');
+      }
+    });
+
+    // Load shipments on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadShipments();
+      adminGreeting.textContent = 'Admin Panel';
+      adminGreeting.classList.remove('hidden');
+    });
+
+    async function fetchJson(url, options) {
+      const opts = Object.assign({ credentials: 'same-origin' }, options || {});
+      const response = await fetch(url, opts);
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Request failed.');
+      }
+
+      return payload;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>

@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "Request body must include a shipment object." });
     }
 
-    const result = upsertShipment(body.shipment);
+    const result = await upsertShipment(body.shipment);
 
     return res.status(200).json({
       action: result.action,
