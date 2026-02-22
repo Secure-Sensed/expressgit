@@ -1,162 +1,126 @@
 const SAMPLE_SHIPMENTS = [
   {
-    trackingNumber: "771975185243",
-    referenceNumber: "REF-INTL-1001",
-    tcn: "TCN-99450001",
-    status: "In Transit",
-    origin: "Memphis, TN",
-    destination: "Lagos, NG",
-    estimatedDelivery: "2026-02-10T16:30:00Z",
-    lastLocation: "Paris, FR",
+    trackingNumber: "TRK-NYC-001",
+    referenceNumber: "REF-2024-NYC-001",
+    tcn: "TCN-2024-001",
+    origin: "New York, NY",
+    originLat: 40.7128,
+    originLng: -74.006,
+    destination: "Boston, MA",
+    destinationLat: 42.3601,
+    destinationLng: -71.0589,
+    status: "in_transit",
+    currentLat: 41.5034,
+    currentLng: -72.5555,
+    lastLocation: "New Haven, CT",
+    estimatedDelivery: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
     events: [
       {
-        title: "In transit",
-        timestamp: "2026-02-07T07:25:00Z",
-        location: "Paris, FR",
-        details: "Departed FedEx location"
-      },
-      {
-        title: "At local facility",
-        timestamp: "2026-02-06T19:10:00Z",
-        location: "Paris, FR",
-        details: "Arrived at FedEx hub"
-      },
-      {
-        title: "Shipment information sent to FedEx",
-        timestamp: "2026-02-05T14:02:00Z",
-        location: "Memphis, TN",
-        details: "Label created"
+        title: "Package picked up",
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        location: "New York, NY",
+        details: "Picked up from shipper"
       }
     ]
   },
   {
-    trackingNumber: "794848183811",
-    referenceNumber: "REF-NA-7730",
-    tcn: "TCN-99450002",
-    status: "Delivered",
-    origin: "Indianapolis, IN",
+    trackingNumber: "TRK-LA-002",
+    referenceNumber: "REF-2024-LA-002",
+    tcn: "TCN-2024-002",
+    origin: "Los Angeles, CA",
+    originLat: 34.0522,
+    originLng: -118.2437,
+    destination: "San Francisco, CA",
+    destinationLat: 37.7749,
+    destinationLng: -122.4194,
+    status: "out_for_delivery",
+    currentLat: 37.3382,
+    currentLng: -121.8863,
+    lastLocation: "San Jose, CA",
+    estimatedDelivery: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    events: [
+      {
+        title: "Out for delivery",
+        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+        location: "San Jose, CA",
+        details: "Package in delivery vehicle"
+      }
+    ]
+  },
+  {
+    trackingNumber: "TRK-CHI-003",
+    referenceNumber: "REF-2024-CHI-003",
+    tcn: "TCN-2024-003",
+    origin: "Chicago, IL",
+    originLat: 41.8781,
+    originLng: -87.6298,
+    destination: "Denver, CO",
+    destinationLat: 39.7392,
+    destinationLng: -104.9903,
+    status: "in_transit",
+    currentLat: 40.437664,
+    currentLng: -104.984853,
+    lastLocation: "Fort Collins, CO",
+    estimatedDelivery: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+    events: [
+      {
+        title: "In transit",
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        location: "Fort Collins, CO",
+        details: "Package in delivery vehicle"
+      }
+    ]
+  },
+  {
+    trackingNumber: "TRK-MIA-004",
+    referenceNumber: "REF-2024-MIA-004",
+    tcn: "TCN-2024-004",
+    origin: "Miami, FL",
+    originLat: 25.7617,
+    originLng: -80.1918,
     destination: "Atlanta, GA",
-    estimatedDelivery: "2026-02-06T18:00:00Z",
+    destinationLat: 33.749,
+    destinationLng: -84.388,
+    status: "delivered",
+    currentLat: 33.749,
+    currentLng: -84.388,
     lastLocation: "Atlanta, GA",
+    estimatedDelivery: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    proofOfDelivery: {
+      deliveredAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+      receivedBy: "John Smith",
+      signature: "On file"
+    },
     events: [
       {
         title: "Delivered",
-        timestamp: "2026-02-06T15:42:00Z",
+        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
         location: "Atlanta, GA",
-        details: "Delivered to front desk"
-      },
-      {
-        title: "Out for delivery",
-        timestamp: "2026-02-06T10:18:00Z",
-        location: "Atlanta, GA",
-        details: "On FedEx vehicle"
-      },
-      {
-        title: "At destination sort facility",
-        timestamp: "2026-02-06T04:11:00Z",
-        location: "Atlanta, GA",
-        details: "Package sorted"
-      }
-    ],
-    proofOfDelivery: {
-      deliveredAt: "2026-02-06T15:42:00Z",
-      receivedBy: "M. DANIELS",
-      signature: "M. Daniels"
-    }
-  },
-  {
-    trackingNumber: "802516839204",
-    referenceNumber: "REF-OPS-2208",
-    tcn: "TCN-99450003",
-    status: "Out for Delivery",
-    origin: "Dallas, TX",
-    destination: "Austin, TX",
-    estimatedDelivery: "2026-02-07T20:00:00Z",
-    lastLocation: "Austin, TX",
-    events: [
-      {
-        title: "Out for delivery",
-        timestamp: "2026-02-07T12:28:00Z",
-        location: "Austin, TX",
-        details: "Courier dispatched"
-      },
-      {
-        title: "At destination sort facility",
-        timestamp: "2026-02-07T08:15:00Z",
-        location: "Austin, TX",
-        details: "Ready for delivery"
-      },
-      {
-        title: "In transit",
-        timestamp: "2026-02-06T20:50:00Z",
-        location: "Dallas, TX",
-        details: "Departed origin facility"
+        details: "Package delivered"
       }
     ]
   },
   {
-    trackingNumber: "612837450901",
-    referenceNumber: "REF-MED-3310",
-    tcn: "TCN-99450004",
-    status: "Exception",
-    origin: "Phoenix, AZ",
-    destination: "Newark, NJ",
-    estimatedDelivery: "2026-02-09T23:59:00Z",
-    lastLocation: "St. Louis, MO",
-    events: [
-      {
-        title: "Operational delay",
-        timestamp: "2026-02-07T02:31:00Z",
-        location: "St. Louis, MO",
-        details: "Weather exception"
-      },
-      {
-        title: "In transit",
-        timestamp: "2026-02-06T16:20:00Z",
-        location: "St. Louis, MO",
-        details: "Arrived at FedEx location"
-      }
-    ]
-  },
-  {
-    trackingNumber: "771975185999",
-    referenceNumber: "REF-RET-4488",
-    tcn: "TCN-99450005",
-    status: "Created",
+    trackingNumber: "TRK-SEA-005",
+    referenceNumber: "REF-2024-SEA-005",
+    tcn: "TCN-2024-005",
     origin: "Seattle, WA",
+    originLat: 47.6062,
+    originLng: -122.3321,
     destination: "Portland, OR",
-    estimatedDelivery: "2026-02-11T23:00:00Z",
+    destinationLat: 45.5152,
+    destinationLng: -122.6784,
+    status: "pending",
+    currentLat: 47.6062,
+    currentLng: -122.3321,
     lastLocation: "Seattle, WA",
+    estimatedDelivery: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
     events: [
       {
-        title: "Shipment information sent to FedEx",
-        timestamp: "2026-02-07T09:15:00Z",
+        title: "Label created",
+        timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
         location: "Seattle, WA",
-        details: "Label created"
-      }
-    ]
-  },
-  {
-    trackingNumber: "998811005544",
-    referenceNumber: "REF-BULK-7781",
-    tcn: "TCN-99450006",
-    status: "At Destination",
-    origin: "Newark, NJ",
-    destination: "Brooklyn, NY",
-    estimatedDelivery: "2026-02-08T19:00:00Z",
-    lastLocation: "Brooklyn, NY",
-    events: [
-      {
-        title: "At destination sort facility",
-        timestamp: "2026-02-07T11:44:00Z",
-        location: "Brooklyn, NY",
-        details: "Package processing"
-      },
-      {
-        title: "In transit",
-        timestamp: "2026-02-07T02:03:00Z",
-        location: "Newark, NJ",
-        details: "Departed origin"
+        details: "Shipping label created"
       }
     ]
   }
