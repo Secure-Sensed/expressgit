@@ -3,12 +3,14 @@
 // ============================================================================
 
 let currentUser = null;
+window.currentUser = currentUser;
 
 const authElements = {
   modal: document.getElementById("authModal"),
   modalOverlay: document.querySelector("#authModal .modal-overlay"),
-  modalClose: document.querySelector("#authModal .modal-close"),
+  modalClose: document.querySelector("#authModal .modal-close") || document.getElementById("authClose"),
   authTabs: document.querySelectorAll(".auth-tab"),
+  authModeButtons: document.querySelectorAll(".auth-mode"),
   loginForm: document.getElementById("loginForm"),
   signupForm: document.getElementById("signupForm"),
   loginEmail: document.getElementById("loginEmail"),
@@ -18,25 +20,42 @@ const authElements = {
   signupEmail: document.getElementById("signupEmail"),
   signupPassword: document.getElementById("signupPassword"),
   signupMessage: document.getElementById("signupMessage"),
-  authBtn: document.querySelector(".link-btn"),
-  profileBtn: document.querySelector(".icon-btn")
+  trackAuthForm: document.getElementById("authForm"),
+  trackAuthNameRow: document.getElementById("authNameRow"),
+  trackAuthName: document.getElementById("authName"),
+  trackAuthEmail: document.getElementById("authEmail"),
+  trackAuthPassword: document.getElementById("authPassword"),
+  trackAuthSubmit: document.getElementById("authSubmit"),
+  trackAuthMessage: document.getElementById("authMessage"),
+  authBtn: document.getElementById("authButton") || document.querySelector(".link-btn"),
+  profileBtn: document.getElementById("profileButton") || document.querySelector(".icon-btn"),
+  logoutBtn: document.getElementById("logoutButton"),
+  sessionGreeting: document.getElementById("sessionGreeting")
 };
+
+const hasClassicAuthLayout = Boolean(authElements.loginForm && authElements.signupForm);
+const hasTrackAuthLayout = Boolean(authElements.trackAuthForm);
 
 async function initAuth() {
   try {
     const response = await fetchJson("/api/auth/session", {
       method: "GET"
     });
-    if (response.user) {
-      currentUser = response.user;
-      updateAuthUI();
-    }
+    setCurrentUser(response.user || null);
+    updateAuthUI();
   } catch (error) {
     console.error("Failed to load session:", error);
   }
 }
 
+function setCurrentUser(user) {
+  currentUser = user || null;
+  window.currentUser = currentUser;
+}
+
 function updateAuthUI() {
+  if (!authElements.authBtn) return;
+
   if (currentUser) {
     authElements.authBtn.textContent = `${currentUser.name || currentUser.email}`;
     authElements.authBtn.classList.add("authenticated");
@@ -44,25 +63,54 @@ function updateAuthUI() {
     authElements.authBtn.textContent = "Sign Up/Log In";
     authElements.authBtn.classList.remove("authenticated");
   }
+
+  if (authElements.sessionGreeting) {
+    if (currentUser) {
+      authElements.sessionGreeting.textContent = `Hello, ${currentUser.name || currentUser.email}`;
+      authElements.sessionGreeting.classList.remove("hidden");
+    } else {
+      authElements.sessionGreeting.textContent = "";
+      authElements.sessionGreeting.classList.add("hidden");
+    }
+  }
+
+  if (authElements.logoutBtn) {
+    authElements.logoutBtn.classList.toggle("hidden", !currentUser);
+  }
 }
 
 function openAuthModal() {
+  if (!authElements.modal) return;
   authElements.modal.classList.remove("is-hidden");
+  authElements.modal.classList.remove("hidden");
+  authElements.modal.setAttribute("aria-hidden", "false");
 }
 
 function closeAuthModal() {
+  if (!authElements.modal) return;
   authElements.modal.classList.add("is-hidden");
+  authElements.modal.classList.add("hidden");
+  authElements.modal.setAttribute("aria-hidden", "true");
   resetAuthForms();
 }
 
 function resetAuthForms() {
-  authElements.loginForm.reset();
-  authElements.signupForm.reset();
-  authElements.loginMessage.textContent = "";
-  authElements.signupMessage.textContent = "";
+  if (hasClassicAuthLayout) {
+    authElements.loginForm.reset();
+    authElements.signupForm.reset();
+    if (authElements.loginMessage) authElements.loginMessage.textContent = "";
+    if (authElements.signupMessage) authElements.signupMessage.textContent = "";
+  }
+
+  if (hasTrackAuthLayout) {
+    authElements.trackAuthForm.reset();
+    showTrackAuthMessage("", "");
+    switchTrackAuthMode("signup");
+  }
 }
 
 function switchAuthTab(tab) {
+  if (!hasClassicAuthLayout) return;
   authElements.authTabs.forEach((t) => {
     t.classList.toggle("active", t.dataset.tab === tab);
   });
@@ -72,8 +120,41 @@ function switchAuthTab(tab) {
   });
 }
 
+function switchTrackAuthMode(mode) {
+  if (!hasTrackAuthLayout) return;
+
+  authElements.authModeButtons.forEach((button) => {
+    const active = button.dataset.authMode === mode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+
+  if (authElements.trackAuthNameRow) {
+    authElements.trackAuthNameRow.classList.toggle("hidden", mode === "login");
+  }
+
+  if (authElements.trackAuthSubmit) {
+    authElements.trackAuthSubmit.textContent = mode === "login" ? "Log In" : "Create Account";
+  }
+
+  const title = document.getElementById("authTitle");
+  if (title) {
+    title.textContent = mode === "login" ? "Log in to your account" : "Create your account";
+  }
+
+  showTrackAuthMessage("", "");
+}
+
+function getTrackAuthMode() {
+  if (!hasTrackAuthLayout) return "signup";
+  const active = Array.from(authElements.authModeButtons).find((button) => button.classList.contains("active"));
+  return active ? active.dataset.authMode : "signup";
+}
+
 async function handleLogin(event) {
   event.preventDefault();
+  if (!hasClassicAuthLayout) return;
+
   const email = authElements.loginEmail.value.trim();
   const password = authElements.loginPassword.value;
 
@@ -90,7 +171,7 @@ async function handleLogin(event) {
     });
 
     if (response.user) {
-      currentUser = response.user;
+      setCurrentUser(response.user);
       updateAuthUI();
       closeAuthModal();
       showAuthMessage("loginMessage", "Signed in successfully!", "success");
@@ -104,6 +185,8 @@ async function handleLogin(event) {
 
 async function handleSignup(event) {
   event.preventDefault();
+  if (!hasClassicAuthLayout) return;
+
   const name = authElements.signupName.value.trim();
   const email = authElements.signupEmail.value.trim();
   const password = authElements.signupPassword.value;
@@ -113,8 +196,8 @@ async function handleSignup(event) {
     return;
   }
 
-  if (password.length < 6) {
-    showAuthMessage("signupMessage", "Password must be at least 6 characters.", "error");
+  if (password.length < 8) {
+    showAuthMessage("signupMessage", "Password must be at least 8 characters.", "error");
     return;
   }
 
@@ -126,7 +209,7 @@ async function handleSignup(event) {
     });
 
     if (response.user) {
-      currentUser = response.user;
+      setCurrentUser(response.user);
       updateAuthUI();
       closeAuthModal();
       showAuthMessage("signupMessage", "Account created successfully!", "success");
@@ -140,15 +223,69 @@ async function handleSignup(event) {
 
 function showAuthMessage(elementId, text, type) {
   const element = document.getElementById(elementId);
+  if (!element) return;
   element.textContent = text;
   element.className = "form-message";
   if (type) element.classList.add(type);
 }
 
+function showTrackAuthMessage(text, type) {
+  if (!authElements.trackAuthMessage) return;
+  authElements.trackAuthMessage.textContent = text;
+  authElements.trackAuthMessage.className = "auth-message";
+  if (type) {
+    authElements.trackAuthMessage.classList.add(type);
+  }
+}
+
+async function handleTrackAuthSubmit(event) {
+  event.preventDefault();
+  if (!hasTrackAuthLayout) return;
+
+  const mode = getTrackAuthMode();
+  const name = String(authElements.trackAuthName && authElements.trackAuthName.value || "").trim();
+  const email = String(authElements.trackAuthEmail && authElements.trackAuthEmail.value || "").trim();
+  const password = String(authElements.trackAuthPassword && authElements.trackAuthPassword.value || "");
+
+  if (!email || !password || (mode === "signup" && !name)) {
+    showTrackAuthMessage("Please fill in all required fields.", "error");
+    return;
+  }
+
+  if (mode === "signup" && password.length < 8) {
+    showTrackAuthMessage("Password must be at least 8 characters.", "error");
+    return;
+  }
+
+  try {
+    showTrackAuthMessage(mode === "login" ? "Signing in..." : "Creating account...", "");
+
+    const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
+    const payload = mode === "login" ? { email, password } : { name, email, password };
+
+    const response = await fetchJson(endpoint, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.user) {
+      showTrackAuthMessage("Authentication failed.", "error");
+      return;
+    }
+
+    setCurrentUser(response.user);
+    updateAuthUI();
+    closeAuthModal();
+    showTrackAuthMessage(mode === "login" ? "Logged in successfully." : "Account created successfully.", "success");
+  } catch (error) {
+    showTrackAuthMessage(error.message || "Authentication failed.", "error");
+  }
+}
+
 async function handleLogout() {
   try {
     await fetchJson("/api/auth/logout", { method: "POST" });
-    currentUser = null;
+    setCurrentUser(null);
     updateAuthUI();
   } catch (error) {
     console.error("Logout failed:", error);
@@ -176,23 +313,51 @@ async function fetchJson(url, options = {}) {
 
 // Wire up auth event listeners
 function wireAuthEvents() {
-  authElements.authBtn.addEventListener("click", () => {
-    if (currentUser) {
-      handleLogout();
-    } else {
+  if (authElements.authBtn) {
+    authElements.authBtn.addEventListener("click", () => {
+      if (hasClassicAuthLayout && currentUser) {
+        handleLogout();
+        return;
+      }
       openAuthModal();
-    }
-  });
+    });
+  }
 
-  authElements.modalClose.addEventListener("click", closeAuthModal);
-  authElements.modalOverlay.addEventListener("click", closeAuthModal);
+  if (authElements.profileBtn && hasTrackAuthLayout) {
+    authElements.profileBtn.addEventListener("click", () => {
+      if (!currentUser) {
+        openAuthModal();
+      }
+    });
+  }
 
-  authElements.authTabs.forEach((tab) => {
-    tab.addEventListener("click", () => switchAuthTab(tab.dataset.tab));
-  });
+  if (authElements.logoutBtn) {
+    authElements.logoutBtn.addEventListener("click", handleLogout);
+  }
 
-  authElements.loginForm.addEventListener("submit", handleLogin);
-  authElements.signupForm.addEventListener("submit", handleSignup);
+  if (authElements.modalClose) {
+    authElements.modalClose.addEventListener("click", closeAuthModal);
+  }
+
+  if (authElements.modalOverlay) {
+    authElements.modalOverlay.addEventListener("click", closeAuthModal);
+  }
+
+  if (hasClassicAuthLayout) {
+    authElements.authTabs.forEach((tab) => {
+      tab.addEventListener("click", () => switchAuthTab(tab.dataset.tab));
+    });
+
+    authElements.loginForm.addEventListener("submit", handleLogin);
+    authElements.signupForm.addEventListener("submit", handleSignup);
+  }
+
+  if (hasTrackAuthLayout) {
+    authElements.authModeButtons.forEach((button) => {
+      button.addEventListener("click", () => switchTrackAuthMode(button.dataset.authMode || "signup"));
+    });
+    authElements.trackAuthForm.addEventListener("submit", handleTrackAuthSubmit);
+  }
 }
 
 // ============================================================================
@@ -244,11 +409,31 @@ const elements = {
   resultsList: document.getElementById("resultsList")
 };
 
+const hasTrackingUi = Boolean(
+  elements.form &&
+  elements.entryLabel &&
+  elements.entryHint &&
+  elements.entryInput &&
+  elements.submitButton &&
+  elements.formMessage &&
+  elements.resultsSection &&
+  elements.resultsList
+);
+
 init();
 
 async function init() {
   await initAuth();
   wireAuthEvents();
+
+  if (hasTrackAuthLayout) {
+    switchTrackAuthMode("signup");
+  }
+
+  if (!hasTrackingUi) {
+    return;
+  }
+
   wireEvents();
   applyMode("tracking");
   renderResults([]);

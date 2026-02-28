@@ -337,6 +337,7 @@
         window.updateAuthUI = function() {
           if (origUpdateAuthUI) origUpdateAuthUI.call(this);
           updateRequestUIAuthState();
+          renderMyParcels();
         };
 
         requestForm.addEventListener('submit', async function(e){

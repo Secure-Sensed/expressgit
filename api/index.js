@@ -10,6 +10,7 @@ const handlerPaths = {
 
   "admin/stats": "../lib/api/admin/stats",
   "admin/upsert": "../lib/api/admin/upsert",
+  "admin/delete": "../lib/api/admin/delete",
   "admin/users": "../lib/api/admin/users",
   "admin/users/delete": "../lib/api/admin/users/delete",
   "admin/update-location": "../lib/api/admin/update-location",

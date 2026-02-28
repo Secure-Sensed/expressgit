@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node local-dev-server.js"
+    "start": "node local-dev-server.js",
+    "test:smoke": "node scripts/e2e-vercel-smoke.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.27.0"
