@@ -86,6 +86,12 @@ function resolveApiHandler(pathname) {
     return candidate;
   }
 
+  // fallback: always handle through central api/index.js if it exists
+  const fallback = path.join(ROOT, "api", "index.js");
+  if (fs.existsSync(fallback)) {
+    return fallback;
+  }
+
   return null;
 }
 
