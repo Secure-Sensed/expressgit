@@ -29,9 +29,54 @@
       width: min(1220px, calc(100% - 48px));
       margin: 0 auto;
       display: grid;
-      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
       gap: 24px;
       align-items: flex-start;
+    }
+
+    .admin-container {
+      width: min(1220px, calc(100% - 48px));
+      margin: 0 auto;
+    }
+
+    .quick-gen {
+      margin-bottom: 24px;
+    }
+
+    .quick-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .dashboard-stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .stat-box {
+      flex: 1;
+      min-width: 120px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .quick-btn {
+      flex: 1;
+      min-width: 160px;
+      background: linear-gradient(135deg, var(--fedex-orange), #e55a00);
+      padding: 12px 16px;
+    }
+
+    .quick-btn:hover {
+      filter: brightness(0.95);
     }
 
     .admin-panel {
@@ -159,7 +204,8 @@
     }
 
     .admin-field input,
-    .admin-field textarea {
+    .admin-field textarea,
+    .admin-field select {
       width: 100%;
       border: 1px solid #cfcfcf;
       border-radius: 6px;
@@ -175,9 +221,17 @@
     }
 
     .admin-field input:focus,
-    .admin-field textarea:focus {
+    .admin-field textarea:focus,
+    .admin-field select:focus {
       outline: 2px solid rgba(77, 20, 140, 0.2);
       border-color: #4d148c;
+    }
+
+    .field-hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+      display: block;
     }
 
     .admin-actions {
@@ -217,12 +271,24 @@
         grid-template-columns: 1fr;
       }
 
+      .admin-container {
+        width: calc(100% - 24px);
+      }
+
       .admin-form-grid {
         grid-template-columns: 1fr;
       }
 
       .admin-home-link {
         font-size: 14px;
+      }
+
+      .quick-buttons {
+        flex-direction: column;
+      }
+
+      .quick-btn {
+        width: 100%;
       }
     }
   </style>
@@ -254,110 +320,180 @@
   </div>
 
   <main class="page-main admin-main">
-    <section class="admin-layout" aria-label="Shipment admin console">
-      <aside class="admin-panel">
-        <h2>Shipments</h2>
-        <p class="admin-help">Select a shipment to edit it, or clear the form to create a new one.</p>
+    <section class="admin-container">
+      <!-- Dashboard -->
+      <div class="admin-panel dashboard">
+        <h2>Dashboard</h2>
+        <div class="dashboard-stats">
+          <div class="stat-box" id="statTotal">Total parcels: –</div>
+          <div class="stat-box" id="statTransit">In transit: –</div>
+          <div class="stat-box" id="statDelivered">Delivered: –</div>
+          <div class="stat-box" id="statCustomers">Customers: –</div>
+        </div>
+      </div>
 
-        <div class="shipment-list" id="shipmentsList"></div>
-        <div class="admin-message" id="listMessage"></div>
-      </aside>
+      <!-- Quick Generator -->
+      <div class="admin-panel quick-gen">
+        <h2>Quick Generate</h2>
+        <p class="admin-help">Create shipping codes instantly with one click.</p>
+        
+        <div class="quick-buttons">
+          <button type="button" class="admin-btn quick-btn" id="genPending" data-status="Pending">
+            Generate Pending
+          </button>
+          <button type="button" class="admin-btn quick-btn" id="genTransit" data-status="In Transit">
+            Generate In Transit
+          </button>
+          <button type="button" class="admin-btn quick-btn" id="genDelivered" data-status="Delivered">
+            Generate Delivered
+          </button>
+        </div>
 
-      <section class="admin-panel">
-        <h1>Admin Console</h1>
-        <p class="admin-help">
-          This panel writes directly to Supabase through secured admin APIs. Provide your admin token to create,
-          update, or delete shipments and their tracking events.
-        </p>
+        <div class="admin-message" id="quickMessage"></div>
+      </div>
 
-        <form id="adminForm" novalidate>
-          <div class="admin-form-grid">
-            <div class="admin-field full">
-              <label for="adminToken">Admin Token*</label>
-              <input id="adminToken" type="password" autocomplete="off" placeholder="Enter ADMIN_API_TOKEN" required>
+      <div class="admin-layout">
+        <!-- Shipment List -->
+        <aside class="admin-panel">
+          <h2>Shipments</h2>
+          <button type="button" id="showUsers" class="admin-btn secondary" style="margin-bottom:8px;">Users</button>
+          <p class="admin-help">Click to edit. Last 20 shown.</p>
+          <div class="shipment-list" id="shipmentsList"></div>
+          <div class="admin-message" id="listMessage"></div>
+          <div id="usersPanel" class="shipment-list hidden" style="margin-top:12px;"></div>
+        </aside>
+
+        <!-- Edit/Create Form -->
+        <section class="admin-panel">
+          <h1>Shipment Details</h1>
+          <p class="admin-help">Edit selected shipment or create a new one.</p>
+
+          <form id="adminForm" novalidate>
+            <div class="admin-form-grid">
+              <div class="admin-field full">
+                <label for="adminToken">Admin Token*</label>
+                <input id="adminToken" type="password" autocomplete="off" placeholder="Enter ADMIN_API_TOKEN" required>
+              </div>
+
+              <!-- Core Fields -->
+              <div class="admin-field full" style="border-top:1px solid #eee;padding-top:12px;margin-top:12px;">
+                <strong style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Core Info</strong>
+              </div>
+
+              <div class="admin-field">
+                <label for="trackingNumber">Tracking #*</label>
+                <input id="trackingNumber" type="text" placeholder="Auto or enter" readonly style="background:#f5f5f5;">
+                <small class="field-hint">Auto-generated if empty</small>
+              </div>
+
+              <div class="admin-field">
+                <label for="status">Status*</label>
+                <select id="status" required style="padding:10px;border:1px solid #cfcfcf;border-radius:6px;background:#fff;">
+                  <option value="">Select status</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Transit">In Transit</option>
+                  <option value="Out for Delivery">Out for Delivery</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Exception">Exception</option>
+                </select>
+              </div>
+
+              <!-- Location Fields -->
+              <div class="admin-field full" style="border-top:1px solid #eee;padding-top:12px;margin-top:12px;">
+                <strong style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Location</strong>
+              </div>
+
+              <div class="admin-field">
+                <label for="origin">From*</label>
+                <input id="origin" type="text" placeholder="e.g. Memphis, TN" required>
+              </div>
+
+              <div class="admin-field">
+                <label for="destination">To*</label>
+                <input id="destination" type="text" placeholder="e.g. Lagos, Nigeria" required>
+              </div>
+
+              <div class="admin-field full">
+                <label for="lastLocation">Current Location*</label>
+                <input id="lastLocation" type="text" placeholder="Where is it now?" required>                <div class="preset-buttons">
+                  <button type="button" class="admin-btn secondary preset-btn" data-lat="6.5244" data-lng="3.3792" data-location="Lagos, NG">Lagos</button>
+                  <button type="button" class="admin-btn secondary preset-btn" data-lat="9.0258" data-lng="7.4933" data-location="Abuja, NG">Abuja</button>
+                  <button type="button" class="admin-btn secondary preset-btn" data-lat="51.5074" data-lng="-0.1278" data-location="London, UK">London</button>
+                  <button type="button" class="admin-btn secondary preset-btn" data-lat="25.2048" data-lng="55.2708" data-location="Dubai, UAE">Dubai</button>
+                </div>              </div>
+
+              <!-- Optional Fields -->
+              <div class="admin-field full" style="border-top:1px solid #eee;padding-top:12px;margin-top:12px;">
+                <strong style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Customer</strong>
+              </div>
+              <div class="admin-field">
+                <label for="customerEmail">Customer Email</label>
+                <input id="customerEmail" type="email" placeholder="user@example.com">
+              </div>
+              <div class="admin-field">
+                <label for="customerName">Customer Name</label>
+                <input id="customerName" type="text" placeholder="John Doe">
+              </div>
+              <div class="admin-field full" style="border-top:1px solid #eee;padding-top:12px;margin-top:12px;">
+                <strong style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Optional</strong>
+              </div>
+
+              <div class="admin-field">
+                <label for="estimatedDelivery">Est. Delivery</label>
+                <input id="estimatedDelivery" type="datetime-local">
+              </div>
+
+              <div class="admin-field">
+                <label for="referenceNumber">Reference #</label>
+                <input id="referenceNumber" type="text" placeholder="e.g. REF-1001">
+              </div>
+
+              <div class="admin-field">
+                <label for="tcn">TCN</label>
+                <input id="tcn" type="text" placeholder="e.g. TCN-99450001">
+              </div>
+
+              <!-- Event Fields -->
+              <div class="admin-field full" style="border-top:1px solid #eee;padding-top:12px;margin-top:12px;">
+                <strong style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Latest Event</strong>
+              </div>
+
+              <div class="admin-field full">
+                <label for="eventTitle">Event Title</label>
+                <input id="eventTitle" type="text" placeholder="e.g. Package picked up">
+              </div>
+
+              <div class="admin-field full">
+                <label for="eventLocation">Event Location</label>
+                <input id="eventLocation" type="text" placeholder="Where did this happen?">
+              </div>
+
+              <!-- Delivery Proof -->
+              <div class="admin-field full" style="border-top:1px solid #eee;padding-top:12px;margin-top:12px;">
+                <strong style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Proof of Delivery (if delivered)</strong>
+              </div>
+
+              <div class="admin-field">
+                <label for="podReceivedBy">Received By</label>
+                <input id="podReceivedBy" type="text" placeholder="Recipient name">
+              </div>
+
+              <div class="admin-field">
+                <label for="podDeliveredAt">Delivered At</label>
+                <input id="podDeliveredAt" type="datetime-local">
+              </div>
             </div>
 
-            <div class="admin-field">
-              <label for="trackingNumber">Tracking Number*</label>
-              <input id="trackingNumber" type="text" placeholder="e.g. 771975185243" required>
+            <div class="admin-actions">
+              <button type="submit" class="admin-btn">Save Shipment</button>
+              <button type="button" id="clearForm" class="admin-btn secondary">Clear</button>
+              <button type="button" id="deleteShipment" class="admin-btn danger">Delete</button>
             </div>
+          </form>
 
-            <div class="admin-field">
-              <label for="status">Status*</label>
-              <input id="status" type="text" placeholder="e.g. In Transit" required>
-            </div>
-
-            <div class="admin-field">
-              <label for="referenceNumber">Reference Number</label>
-              <input id="referenceNumber" type="text" placeholder="e.g. REF-INTL-1001">
-            </div>
-
-            <div class="admin-field">
-              <label for="tcn">TCN</label>
-              <input id="tcn" type="text" placeholder="e.g. TCN-99450001">
-            </div>
-
-            <div class="admin-field">
-              <label for="origin">Origin*</label>
-              <input id="origin" type="text" placeholder="e.g. Memphis, TN" required>
-            </div>
-
-            <div class="admin-field">
-              <label for="destination">Destination*</label>
-              <input id="destination" type="text" placeholder="e.g. Lagos, NG" required>
-            </div>
-
-            <div class="admin-field">
-              <label for="lastLocation">Last Location*</label>
-              <input id="lastLocation" type="text" placeholder="Current shipment location" required>
-            </div>
-
-            <div class="admin-field">
-              <label for="estimatedDelivery">Estimated Delivery</label>
-              <input id="estimatedDelivery" type="datetime-local">
-            </div>
-
-            <div class="admin-field">
-              <label for="podDeliveredAt">POD Delivered At</label>
-              <input id="podDeliveredAt" type="datetime-local">
-            </div>
-
-            <div class="admin-field">
-              <label for="podReceivedBy">POD Received By</label>
-              <input id="podReceivedBy" type="text" placeholder="Recipient name">
-            </div>
-
-            <div class="admin-field">
-              <label for="podSignature">POD Signature</label>
-              <input id="podSignature" type="text" placeholder="Signature value">
-            </div>
-
-            <div class="admin-field">
-              <label for="eventTitle">Event Title</label>
-              <input id="eventTitle" type="text" placeholder="e.g. Departed FedEx facility">
-            </div>
-
-            <div class="admin-field">
-              <label for="eventLocation">Event Location</label>
-              <input id="eventLocation" type="text" placeholder="e.g. Paris, FR">
-            </div>
-
-            <div class="admin-field full">
-              <label for="eventDetails">Event Details</label>
-              <textarea id="eventDetails" placeholder="Optional scan details"></textarea>
-            </div>
-          </div>
-
-          <div class="admin-actions">
-            <button type="submit" class="admin-btn">Save Shipment</button>
-            <button type="button" id="deleteShipment" class="admin-btn danger">Delete Shipment</button>
-            <button type="button" id="clearForm" class="admin-btn secondary">Clear Form</button>
-            <button type="button" id="reloadList" class="admin-btn secondary">Reload List</button>
-          </div>
-        </form>
-
-        <div class="admin-message" id="formMessage"></div>
-      </section>
+          <div class="admin-message" id="formMessage"></div>
+        </section>
+      </div>
     </section>
   </main>
 
@@ -373,9 +509,9 @@
       listMessage: document.getElementById("listMessage"),
       form: document.getElementById("adminForm"),
       formMessage: document.getElementById("formMessage"),
+      quickMessage: document.getElementById("quickMessage"),
       deleteShipment: document.getElementById("deleteShipment"),
       clearForm: document.getElementById("clearForm"),
-      reloadList: document.getElementById("reloadList"),
       adminToken: document.getElementById("adminToken"),
       trackingNumber: document.getElementById("trackingNumber"),
       referenceNumber: document.getElementById("referenceNumber"),
@@ -390,10 +526,10 @@
       podSignature: document.getElementById("podSignature"),
       eventTitle: document.getElementById("eventTitle"),
       eventLocation: document.getElementById("eventLocation"),
-      eventDetails: document.getElementById("eventDetails")
+      eventDetails: document.getElementById("eventDetails"),
+      customerEmail: document.getElementById("customerEmail"),
+      customerName: document.getElementById("customerName")
     };
-
-    init();
 
     function init() {
       if (state.adminToken) {
@@ -403,33 +539,195 @@
       elements.form.addEventListener("submit", onSave);
       elements.deleteShipment.addEventListener("click", onDelete);
       elements.clearForm.addEventListener("click", () => clearForm(true));
-      elements.reloadList.addEventListener("click", loadShipments);
+      elements.status.addEventListener("change", onStatusChanged);
+
+      // preset location buttons
+      document.querySelectorAll(".preset-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const lat = btn.getAttribute("data-lat");
+          const lng = btn.getAttribute("data-lng");
+          const loc = btn.getAttribute("data-location");
+          if (lat && lng) {
+            if (elements.currentLat) elements.currentLat.value = lat;
+            if (elements.currentLng) elements.currentLng.value = lng;
+          }
+          if (loc) elements.lastLocation.value = loc;
+        });
+      });
+
+      // user panel toggle
+      const showUsersBtn = document.getElementById('showUsers');
+      if (showUsersBtn) {
+        showUsersBtn.addEventListener('click', toggleUsersPanel);
+      }
+
+      // Quick generator buttons
+      document.querySelectorAll(".quick-btn").forEach(btn => {
+        btn.addEventListener("click", () => quickGenerate(btn.getAttribute("data-status")));
+      });
 
       loadShipments();
+      loadStats();
+    }
+
+    init();
+
+    async function loadStats() {
+      try {
+        const payload = await fetchJson('/api/admin/stats', { method: 'GET' });
+        document.getElementById('statTotal').textContent = `Total parcels: ${payload.total}`;
+        document.getElementById('statTransit').textContent = `In transit: ${payload.inTransit}`;
+        document.getElementById('statDelivered').textContent = `Delivered: ${payload.delivered}`;
+        document.getElementById('statCustomers').textContent = `Customers: ${payload.customers}`;
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    function generateTrackingNumber() {
+      const chars = "0123456789";
+      let result = "";
+      for (let i = 0; i < 12; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    function onStatusChanged() {
+      const status = elements.status.value;
+      const preset = PRESETS[status];
+      if (preset && !elements.lastLocation.value) {
+        elements.lastLocation.value = preset.lastLocation;
+      }
+    }
+
+    async function quickGenerate(status) {
+      const preset = PRESETS[status];
+    }
+
+    function toggleUsersPanel() {
+      const panel = document.getElementById('usersPanel');
+      if (!panel) return;
+      if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        return;
+      }
+      // load user list
+      fetchJson('/api/admin/users', { method: 'GET' })
+        .then(payload => {
+          const users = payload.users || [];
+          panel.innerHTML = users.length ? users.map(u => `<div class=\"shipment-row\">${escapeHtml(u.email)} <button class=\"admin-btn danger small delete-user\" data-email=\"${escapeHtml(u.email)}\">Remove</button></div>`).join('') : '<div class=\"shipment-row\">No users</div>';
+          panel.classList.remove('hidden');
+          panel.querySelectorAll('.delete-user').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const email = btn.getAttribute('data-email');
+              if (confirm(`Remove user ${email}?`)) {
+                fetch('/api/admin/users/delete', {
+                  method:'POST',
+                  headers:{ 'Content-Type':'application/json'},
+                  body: JSON.stringify({ email })
+                }).then(() => toggleUsersPanel());
+              }
+            });
+          });
+        });
+    }
+
+    async function quickGenerate(status) {
+      const preset = PRESETS[status];
+      if (!preset) return;
+
+      const trackingNumber = generateTrackingNumber();
+      const token = elements.adminToken.value.trim();
+
+      if (!token) {
+        setMessage(elements.quickMessage, "Please enter admin token first", "error");
+        elements.adminToken.focus();
+        return;
+      }
+
+      state.adminToken = token;
+      localStorage.setItem("adminToken", token);
+
+      const shipment = {
+        trackingNumber,
+        status,
+        origin: preset.origin,
+        destination: preset.destination,
+        lastLocation: preset.lastLocation,
+        events: [{
+          title: `Shipment marked as ${status}`,
+          location: preset.lastLocation,
+          timestamp: new Date().toISOString()
+        }]
+      };
+
+      if (preset.daysToDelivery >= 0) {
+        const eta = new Date();
+        eta.setDate(eta.getDate() + preset.daysToDelivery);
+        shipment.estimatedDelivery = eta.toISOString();
+      }
+
+      if (status === "Delivered" && preset.receivedBy) {
+        shipment.proofOfDelivery = {
+          deliveredAt: new Date().toISOString(),
+          receivedBy: preset.receivedBy
+        };
+      }
+
+      setMessage(elements.quickMessage, "Creating shipment...", "info");
+
+      try {
+        const payload = await fetchJson("/api/admin/upsert", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-token": token
+          },
+          body: JSON.stringify({ shipment })
+        });
+
+        await loadShipments();
+        setMessage(elements.quickMessage, `✓ Created: ${trackingNumber}`, "success");
+
+        // Auto-select the new shipment
+        const savedShipment = state.shipments.find(s => s.trackingNumber === trackingNumber);
+        if (savedShipment) {
+          selectShipment(savedShipment);
+        }
+      } catch (error) {
+        setMessage(elements.quickMessage, error.message || "Failed to create shipment", "error");
+      }
     }
 
     async function loadShipments() {
-      setMessage(elements.listMessage, "Loading shipments...", "info");
+      setMessage(elements.listMessage, "Loading...", "info");
 
       try {
         const payload = await fetchJson("/api/shipments", { method: "GET" });
-        state.shipments = Array.isArray(payload.shipments) ? payload.shipments : [];
+        state.shipments = Array.isArray(payload.shipments) ? payload.shipments.slice(0, 20) : [];
         renderShipments();
-        setMessage(elements.listMessage, `${state.shipments.length} shipment(s) loaded.`, "success");
+        setMessage(elements.listMessage, `${state.shipments.length} shipment(s)`, "success");
       } catch (error) {
         state.shipments = [];
         renderShipments();
-        setMessage(elements.listMessage, error.message || "Unable to load shipments.", "error");
+        setMessage(elements.listMessage, error.message || "Failed to load", "error");
       }
     }
 
     function renderShipments() {
       elements.shipmentsList.innerHTML = "";
 
+      // close users panel when showing shipments
+      const usersPanel = document.getElementById('usersPanel');
+      if (usersPanel) usersPanel.classList.add('hidden');
+
+
       if (!state.shipments.length) {
         const empty = document.createElement("div");
         empty.className = "shipment-row";
-        empty.textContent = "No shipments found.";
+        empty.style.color = "#999";
+        empty.textContent = "No shipments yet";
         elements.shipmentsList.appendChild(empty);
         return;
       }
@@ -467,18 +765,15 @@
       elements.destination.value = shipment.destination || "";
       elements.lastLocation.value = shipment.lastLocation || "";
       elements.estimatedDelivery.value = toDatetimeLocal(shipment.estimatedDelivery);
+      elements.eventTitle.value = "";
+      elements.eventLocation.value = "";
 
       const pod = shipment.proofOfDelivery || {};
       elements.podDeliveredAt.value = toDatetimeLocal(pod.deliveredAt);
       elements.podReceivedBy.value = pod.receivedBy || "";
-      elements.podSignature.value = pod.signature || "";
-
-      elements.eventTitle.value = "";
-      elements.eventLocation.value = "";
-      elements.eventDetails.value = "";
 
       renderShipments();
-      setMessage(elements.formMessage, `Selected ${shipment.trackingNumber}`, "info");
+      setMessage(elements.formMessage, `Editing: ${shipment.trackingNumber}`, "info");
     }
 
     function clearForm(keepToken) {
@@ -487,6 +782,7 @@
       state.selectedTracking = "";
       elements.form.reset();
       elements.adminToken.value = token;
+      elements.trackingNumber.value = "";
       renderShipments();
       setMessage(elements.formMessage, "", "");
     }
@@ -496,7 +792,7 @@
 
       const token = elements.adminToken.value.trim();
       if (!token) {
-        setMessage(elements.formMessage, "Admin token is required.", "error");
+        setMessage(elements.formMessage, "Admin token required", "error");
         return;
       }
 
@@ -504,14 +800,14 @@
       try {
         shipment = buildShipmentPayload();
       } catch (error) {
-        setMessage(elements.formMessage, error.message || "Invalid form input.", "error");
+        setMessage(elements.formMessage, error.message, "error");
         return;
       }
 
       state.adminToken = token;
       localStorage.setItem("adminToken", token);
 
-      setMessage(elements.formMessage, "Saving shipment...", "info");
+      setMessage(elements.formMessage, "Saving...", "info");
 
       try {
         const payload = await fetchJson("/api/admin/upsert", {
@@ -526,39 +822,39 @@
         await loadShipments();
 
         const savedTracking = payload && payload.shipment ? payload.shipment.trackingNumber : shipment.trackingNumber;
-        const savedShipment = state.shipments.find((item) => item.trackingNumber === savedTracking);
+        const savedShipment = state.shipments.find(item => item.trackingNumber === savedTracking);
         if (savedShipment) {
           selectShipment(savedShipment);
         }
 
-        setMessage(elements.formMessage, `Shipment ${payload.action}: ${savedTracking}`, "success");
+        setMessage(elements.formMessage, `✓ ${payload.action}: ${savedTracking}`, "success");
       } catch (error) {
-        setMessage(elements.formMessage, error.message || "Unable to save shipment.", "error");
+        setMessage(elements.formMessage, error.message || "Failed to save", "error");
       }
     }
 
     async function onDelete() {
       const token = elements.adminToken.value.trim();
-      const trackingNumber = elements.trackingNumber.value.trim().toUpperCase();
+      const trackingNumber = elements.trackingNumber.value.trim();
 
       if (!token) {
-        setMessage(elements.formMessage, "Admin token is required.", "error");
+        setMessage(elements.formMessage, "Admin token required", "error");
         return;
       }
 
       if (!trackingNumber) {
-        setMessage(elements.formMessage, "Select or enter a tracking number to delete.", "error");
+        setMessage(elements.formMessage, "Select or enter a tracking number", "error");
         return;
       }
 
-      if (!window.confirm(`Delete shipment ${trackingNumber}? This cannot be undone.`)) {
+      if (!window.confirm(`Delete ${trackingNumber}?`)) {
         return;
       }
 
       state.adminToken = token;
       localStorage.setItem("adminToken", token);
 
-      setMessage(elements.formMessage, "Deleting shipment...", "info");
+      setMessage(elements.formMessage, "Deleting...", "info");
 
       try {
         const payload = await fetchJson("/api/admin/delete", {
@@ -574,24 +870,24 @@
 
         if (payload.action === "deleted") {
           clearForm(true);
-          setMessage(elements.formMessage, `Shipment deleted: ${payload.trackingNumber}`, "success");
+          setMessage(elements.formMessage, `✓ Deleted: ${payload.trackingNumber}`, "success");
         } else {
-          setMessage(elements.formMessage, `Shipment not found: ${payload.trackingNumber}`, "info");
+          setMessage(elements.formMessage, `Not found: ${payload.trackingNumber}`, "info");
         }
       } catch (error) {
-        setMessage(elements.formMessage, error.message || "Unable to delete shipment.", "error");
+        setMessage(elements.formMessage, error.message || "Failed to delete", "error");
       }
     }
 
     function buildShipmentPayload() {
-      const trackingNumber = elements.trackingNumber.value.trim().toUpperCase();
+      const trackingNumber = (elements.trackingNumber.value.trim() || generateTrackingNumber()).toUpperCase();
       const status = elements.status.value.trim();
       const origin = elements.origin.value.trim();
       const destination = elements.destination.value.trim();
       const lastLocation = elements.lastLocation.value.trim();
 
-      if (!trackingNumber || !status || !origin || !destination || !lastLocation) {
-        throw new Error("Tracking number, status, origin, destination, and last location are required.");
+      if (!status || !origin || !destination || !lastLocation) {
+        throw new Error("Status, origin, destination, and location are required");
       }
 
       const payload = {
@@ -603,11 +899,12 @@
         estimatedDelivery: fromDatetimeLocal(elements.estimatedDelivery.value)
       };
 
-      const referenceNumber = elements.referenceNumber.value.trim().toUpperCase();
-      const tcn = elements.tcn.value.trim().toUpperCase();
-
-      if (referenceNumber) payload.referenceNumber = referenceNumber;
-      if (tcn) payload.tcn = tcn;
+      if (elements.referenceNumber.value.trim()) {
+        payload.referenceNumber = elements.referenceNumber.value.trim().toUpperCase();
+      }
+      if (elements.tcn.value.trim()) {
+        payload.tcn = elements.tcn.value.trim().toUpperCase();
+      }
 
       payload.proofOfDelivery = buildProofOfDelivery();
 
@@ -620,42 +917,36 @@
     function buildProofOfDelivery() {
       const deliveredAt = fromDatetimeLocal(elements.podDeliveredAt.value);
       const receivedBy = elements.podReceivedBy.value.trim();
-      const signature = elements.podSignature.value.trim();
 
-      if (!deliveredAt && !receivedBy && !signature) {
+      if (!deliveredAt && !receivedBy) {
         return null;
       }
 
       return {
         deliveredAt,
-        receivedBy: receivedBy || null,
-        signature: signature || null
+        receivedBy: receivedBy || null
       };
     }
 
     function buildEventPayload() {
       const title = elements.eventTitle.value.trim();
       const location = elements.eventLocation.value.trim();
-      const details = elements.eventDetails.value.trim();
 
-      if (!title && !location && !details) {
+      if (!title && !location) {
         return null;
       }
 
       return {
-        title: title || elements.status.value.trim() || "Shipment updated",
-        location: location || elements.lastLocation.value.trim() || elements.destination.value.trim(),
-        details,
+        title: title || elements.status.value.trim() || "Updated",
+        location: location || elements.lastLocation.value,
         timestamp: new Date().toISOString()
       };
     }
 
     function toDatetimeLocal(isoString) {
       if (!isoString) return "";
-
       const date = new Date(isoString);
       if (Number.isNaN(date.getTime())) return "";
-
       const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
       return localDate.toISOString().slice(0, 16);
     }
@@ -663,37 +954,27 @@
     function fromDatetimeLocal(value) {
       const input = String(value || "").trim();
       if (!input) return null;
-
       const date = new Date(input);
       if (Number.isNaN(date.getTime())) {
-        throw new Error(`Invalid date/time value: ${input}`);
+        throw new Error(`Invalid date: ${input}`);
       }
-
       return date.toISOString();
     }
 
     function setMessage(target, text, type) {
       target.textContent = text || "";
       target.className = "admin-message";
-
-      if (!text) {
-        return;
-      }
-
+      if (!text) return;
       target.classList.add("show");
-      if (type) {
-        target.classList.add(type);
-      }
+      if (type) target.classList.add(type);
     }
 
     async function fetchJson(url, options) {
       const response = await fetch(url, Object.assign({ credentials: "same-origin" }, options || {}));
       const payload = await response.json().catch(() => ({}));
-
       if (!response.ok) {
-        throw new Error(payload.error || "Request failed.");
+        throw new Error(payload.error || "Request failed");
       }
-
       return payload;
     }
 

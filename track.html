@@ -29,21 +29,38 @@
     <section class="section container">
       <h1>Track or Request a Shipment</h1>
 
-      <div class="grid">
-        <div>
-          <h2>Track an existing code</h2>
-          <form id="trackForm">
-            <label for="trackQuery">Tracking / Reference / TCN / POD</label>
-            <input id="trackQuery" type="text" placeholder="Enter tracking number" required>
-            <button type="submit" class="btn btn-primary">Track</button>
-          </form>
-          <div id="trackResult" class="card"></div>
-        </div>
+      <div class="track-simple">
+        <div class="track-center">
+          <h2>Track your parcel</h2>
+          <p class="entry-note">Enter a tracking, reference, TCN or POD number. Paste a value and press Enter.</p>
+          <div id="myParcelsSection" class="my-parcels hidden">
+            <h3>My Parcels</h3>
+            <div id="myParcelsList" class="recent-buttons"></div>
+          </div>
 
-        <div>
+          <form id="trackForm" class="track-form-simple">
+            <label for="trackQuery" class="visually-hidden">Tracking number</label>
+            <div class="track-row">
+              <input id="trackQuery" class="track-input-large" type="text" placeholder="e.g. 771975185243" inputmode="text" autocomplete="off" required autofocus>
+              <button type="submit" class="btn btn-primary track-cta">Track parcel</button>
+            </div>
+            <div class="track-helpers">
+              <button id="exampleBtn" type="button" class="link-btn">Use example</button>
+              <button id="pasteBtn" type="button" class="link-btn" aria-label="Paste from clipboard">Paste</button>
+              <span class="muted">Need help? <a href="contact.html">Contact support</a></span>
+            </div>
+          </form>
+
+          <div id="recentSearches" class="recent-list hidden"></div>
+          <div id="trackResult" class="card result-card" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div id="requestSection" class="request-section hidden">
+        <div class="track-center">
           <h2>Request a tracking code</h2>
-          <p>You must be logged in to request a shipment tracking code.</p>
-          <form id="requestForm">
+          <p class="entry-note">Submit your shipment details to get a tracking number.</p>
+          <form id="requestForm" class="track-form-simple">
             <label for="origin">Origin</label>
             <input id="origin" type="text" placeholder="City, State or Country" required>
 
@@ -55,7 +72,7 @@
 
             <button type="submit" class="btn btn-primary">Request Tracking Code</button>
           </form>
-          <div id="requestResult" class="card"></div>
+          <div id="requestResult" class="card" aria-live="polite"></div>
         </div>
       </div>
     </section>
@@ -107,16 +124,132 @@
   </div>
 
   <script src="app.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+4ODw9Ynjxg7gkTzYxNktpT/K1KxQ5omTVZ+3T/tM=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j6667Ck/TcmB3sBUxcSRvTY7Abt/3Tkbr4oC4TM=" crossorigin=""></script>
   <script>
+    const RECENT_SEARCHES_KEY = 'trackingRecentSearches';
+
+    function saveRecentSearch(trackingNumber) {
+      let searches = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+      searches = searches.filter(t => t !== trackingNumber);
+      searches.unshift(trackingNumber);
+      searches = searches.slice(0, 5);
+      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches));
+    }
+
+    function loadRecentSearches() {
+      return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+    }
+
+    function getStatusProgress(status) {
+      const statusMap = {
+        'pending': 10,
+        'in transit': 50,
+        'in-transit': 50,
+        'out for delivery': 85,
+        'delivered': 100,
+        'exception': 25
+      };
+      return statusMap[String(status).toLowerCase()] || 10;
+    }
+
+    function renderRecentSearches() {
+      const recentSearchesEl = document.getElementById('recentSearches');
+      const searches = loadRecentSearches();
+      const trackQuery = document.getElementById('trackQuery');
+
+      if (!searches.length) {
+        recentSearchesEl.classList.add('hidden');
+        return;
+      }
+
+      recentSearchesEl.classList.remove('hidden');
+      recentSearchesEl.innerHTML = `
+        <div class="recent-header">Recent searches</div>
+        <div class="recent-buttons">
+          ${searches.map(trk => `<button type="button" class="recent-btn" data-tracking="${escapeHtml(trk)}">${escapeHtml(trk)}</button>`).join('')}
+        </div>
+      `;
+
+      recentSearchesEl.querySelectorAll('.recent-btn').forEach(btn => {
+        btn.addEventListener('click', function(){
+          trackQuery.value = this.getAttribute('data-tracking');
+          trackQuery.focus();
+          document.getElementById('trackForm').dispatchEvent(new Event('submit'));
+        });
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', function(){
       const trackForm = document.getElementById('trackForm');
       const trackQuery = document.getElementById('trackQuery');
       const trackResult = document.getElementById('trackResult');
-
+      const requestSection = document.getElementById('requestSection');
       const requestForm = document.getElementById('requestForm');
       const requestResult = document.getElementById('requestResult');
 
+      renderRecentSearches();
+      renderMyParcels();
+
+      function renderMyParcels() {
+        const section = document.getElementById('myParcelsSection');
+        const list = document.getElementById('myParcelsList');
+        if (!currentUser) {
+          section.classList.add('hidden');
+          return;
+        }
+
+        fetchJson('/api/shipments?owner=me', { method: 'GET' })
+          .then(payload => {
+            const parcels = payload.shipments || [];
+            if (!parcels.length) {
+              section.classList.add('hidden');
+              return;
+            }
+            section.classList.remove('hidden');
+            list.innerHTML = parcels.map(p => `<button type=\"button\" class=\"recent-btn\" data-tracking=\"${escapeHtml(p.trackingNumber)}\">${escapeHtml(p.trackingNumber)}</button>`).join('');
+            list.querySelectorAll('.recent-btn').forEach(btn => {
+              btn.addEventListener('click', function(){
+                trackQuery.value = this.getAttribute('data-tracking');
+                trackQuery.focus();
+                document.getElementById('trackForm').dispatchEvent(new Event('submit'));
+              });
+            });
+          })
+          .catch(() => {
+            section.classList.add('hidden');
+          });
+      }
+
       if (trackForm) {
+        const exampleBtn = document.getElementById('exampleBtn');
+        const pasteBtn = document.getElementById('pasteBtn');
+
+        if (exampleBtn) {
+          exampleBtn.addEventListener('click', function(e){
+            e.preventDefault();
+            trackQuery.value = '771975185243';
+            trackQuery.focus();
+            trackQuery.select();
+          });
+        }
+
+        if (pasteBtn) {
+          pasteBtn.addEventListener('click', function(e){
+            e.preventDefault();
+            if (navigator.clipboard) {
+              navigator.clipboard.readText().then(text => {
+                trackQuery.value = text.trim();
+                trackQuery.focus();
+              }).catch(() => {
+                alert('Unable to access clipboard. Please paste manually.');
+              });
+            } else {
+              alert('Clipboard access not available.');
+            }
+          });
+        }
+
         trackForm.addEventListener('submit', async function(e){
           e.preventDefault();
           trackResult.textContent = 'Loading...';
@@ -131,20 +264,81 @@
               return;
             }
             const s = item.shipment;
-            trackResult.innerHTML = `<h3>${escapeHtml(s.trackingNumber)}</h3>
-              <p>Status: ${escapeHtml(s.status)}</p>
-              <p>Origin: ${escapeHtml(s.origin)}</p>
-              <p>Destination: ${escapeHtml(s.destination)}</p>
-              <p>Last Location: ${escapeHtml(s.lastLocation)}</p>
-              <h4>Events</h4>
-              <ul>${(s.events||[]).map(ev => `<li>${escapeHtml(ev.title)} — ${escapeHtml(ev.location)} — ${escapeHtml(ev.timestamp)}</li>`).join('')}</ul>`;
+            saveRecentSearch(s.trackingNumber);
+            renderRecentSearches();
+
+            const progress = getStatusProgress(s.status);
+            const eta = s.estimatedDelivery ? new Date(s.estimatedDelivery).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending';
+            const eventsHtml = (s.events || []).map(ev => `<li class="event-item"><strong>${escapeHtml(ev.title)}</strong> — ${escapeHtml(ev.location)} — ${escapeHtml(ev.timestamp)}</li>`).join('');
+
+            trackResult.innerHTML = `
+              <div class="result-head">
+                <div>
+                  <h3 class="result-trk">${escapeHtml(s.trackingNumber)}</h3>
+                  <div class="muted">${escapeHtml(s.origin)} → ${escapeHtml(s.destination)}</div>
+                </div>
+                <div class="result-actions">
+                  <button class="link-btn" id="copyTrack">Copy</button>
+                </div>
+              </div>
+              <div class="progress-section">
+                <div class="progress-bar" style="--progress:${progress}%"></div>
+                <div class="progress-info">
+                  <strong>Status:</strong> ${escapeHtml(s.status)} • <strong>ETA:</strong> ${eta}
+                </div>
+              </div>
+              <p><strong>Last known location:</strong> ${escapeHtml(s.lastLocation || 'Not available')}</p>
+              <div id="map" style="height:300px; margin:12px 0; display:none"></div>
+              <h4>Recent events</h4>
+              <ul class="event-list">${eventsHtml || '<li class="event-item">No events available yet.</li>'}</ul>
+            `;
+
+            const copyBtn = document.getElementById('copyTrack');
+            if (copyBtn) {
+              copyBtn.addEventListener('click', function(){
+                navigator.clipboard && navigator.clipboard.writeText(s.trackingNumber).then(() => {
+                  copyBtn.textContent = 'Copied';
+                  setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+                }).catch(() => {
+                  alert('Copy failed — select and copy manually.');
+                });
+              });
+            }
+
+            // initialize map if coordinates provided
+            if (s.currentLat && s.currentLng) {
+              const mapEl = document.getElementById('map');
+              if (mapEl) {
+                mapEl.style.display = 'block';
+                const map = L.map(mapEl).setView([s.currentLat, s.currentLng], 8);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+                L.marker([s.currentLat, s.currentLng]).addTo(map);
+              }
+            }
           } catch (err) {
             trackResult.textContent = err.message || 'Unable to track right now.';
           }
         });
       }
 
-      if (requestForm) {
+      if (requestSection && requestForm) {
+        function updateRequestUIAuthState() {
+          if (window.currentUser) {
+            requestSection.classList.remove('hidden');
+          } else {
+            requestSection.classList.add('hidden');
+          }
+        }
+
+        updateRequestUIAuthState();
+        const origUpdateAuthUI = window.updateAuthUI;
+        window.updateAuthUI = function() {
+          if (origUpdateAuthUI) origUpdateAuthUI.call(this);
+          updateRequestUIAuthState();
+        };
+
         requestForm.addEventListener('submit', async function(e){
           e.preventDefault();
           requestResult.textContent = 'Submitting request...';
@@ -164,6 +358,9 @@
 
             requestResult.innerHTML = `<p>${escapeHtml(payload.message || 'Request created.')}</p>
               <p>Tracking Number: <strong>${escapeHtml(payload.shipment.trackingNumber)}</strong></p>`;
+            requestForm.reset();
+            saveRecentSearch(payload.shipment.trackingNumber);
+            renderRecentSearches();
           } catch (err) {
             requestResult.textContent = err.message || 'Unable to submit request.';
           }

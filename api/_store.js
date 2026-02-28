@@ -50,6 +50,7 @@ function generateIdentifier(prefix) {
 function dbRowToShipment(row, events = []) {
   if (!row) return null;
 
+  // include optional lat/lng and customer fields if present
   return {
     id: row.id,
     trackingNumber: row.tracking_number,
@@ -57,7 +58,15 @@ function dbRowToShipment(row, events = []) {
     tcn: row.tcn,
     status: row.status,
     origin: row.origin,
+    originLat: row.origin_lat || row.originLat || null,
+    originLng: row.origin_lng || row.originLng || null,
     destination: row.destination,
+    destinationLat: row.destination_lat || row.destinationLat || null,
+    destinationLng: row.destination_lng || row.destinationLng || null,
+    currentLat: row.current_lat || row.currentLat || null,
+    currentLng: row.current_lng || row.currentLng || null,
+    customerEmail: row.customer_email || row.customerEmail || null,
+    customerName: row.customer_name || row.customerName || null,
     estimatedDelivery: row.estimated_delivery,
     lastLocation: row.last_location,
     proofOfDelivery: row.proof_of_delivery || null,
@@ -195,7 +204,7 @@ function sanitizeShipmentInput(input = {}) {
 
   const hasCustomEvents = Array.isArray(input.events) && input.events.length > 0;
 
-  return {
+  const sanitized = {
     trackingNumber,
     referenceNumber: input.referenceNumber ? formatLookupValue("reference", input.referenceNumber) : "",
     tcn: input.tcn ? formatLookupValue("tcn", input.tcn) : "",
@@ -211,6 +220,20 @@ function sanitizeShipmentInput(input = {}) {
       ? input.events.map((event) => sanitizeEvent(event || {}, fallbackEvent))
       : [sanitizeEvent({}, fallbackEvent)]
   };
+
+  // optional GPS coords
+  if (input.currentLat !== undefined) sanitized.currentLat = Number(input.currentLat) || null;
+  if (input.currentLng !== undefined) sanitized.currentLng = Number(input.currentLng) || null;
+  if (input.originLat !== undefined) sanitized.originLat = Number(input.originLat) || null;
+  if (input.originLng !== undefined) sanitized.originLng = Number(input.originLng) || null;
+  if (input.destinationLat !== undefined) sanitized.destinationLat = Number(input.destinationLat) || null;
+  if (input.destinationLng !== undefined) sanitized.destinationLng = Number(input.destinationLng) || null;
+
+  // customer assignment
+  if (input.customerEmail) sanitized.customerEmail = String(input.customerEmail).trim().toLowerCase();
+  if (input.customerName) sanitized.customerName = String(input.customerName).trim();
+
+  return sanitized;
 }
 
 function findShipmentInMemory(mode, query) {
@@ -497,9 +520,41 @@ async function deleteShipment(trackingNumber) {
   };
 }
 
+// additional helpers
+async function stats() {
+  const shipments = await listShipments();
+  const total = shipments.length;
+  const inTransit = shipments.filter(s => /in[- ]?transit/i.test(s.status)).length;
+  const delivered = shipments.filter(s => /delivered/i.test(s.status)).length;
+  // count unique customers
+  const customers = new Set(shipments.filter(s => s.customerEmail).map(s => s.customerEmail));
+  return {
+    total,
+    inTransit,
+    delivered,
+    customers: customers.size
+  };
+}
+
+function listUsers(req) {
+  // delegate to auth cookie
+  const { getUsers } = require("./_auth");
+  return getUsers(req);
+}
+
+function deleteUser(req, email) {
+  const { getUsers, setUsers, normalizeEmail } = require("./_auth");
+  const users = getUsers(req).filter(u => normalizeEmail(u.email) !== normalizeEmail(email));
+  // note: this won't persist in response here; caller must set cookie via response
+  return users;
+}
+
 module.exports = {
   listShipments,
   trackShipments,
   upsertShipment,
-  deleteShipment
+  deleteShipment,
+  stats,
+  listUsers,
+  deleteUser
 };
