@@ -302,10 +302,24 @@ async function fetchJson(url, options = {}) {
     ...options
   });
 
-  const data = await response.json();
+  const raw = await response.text();
+  let data = null;
+
+  if (raw) {
+    try {
+      data = JSON.parse(raw);
+    } catch (_error) {
+      const trimmed = raw.trim();
+      const fallback = trimmed ? trimmed.slice(0, 120) : "";
+      const message = fallback ? `Server returned non-JSON response: ${fallback}` : "Server returned non-JSON response.";
+      throw new Error(message);
+    }
+  } else {
+    data = {};
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || `HTTP ${response.status}`);
+    throw new Error((data && data.error) || `HTTP ${response.status}`);
   }
 
   return data;

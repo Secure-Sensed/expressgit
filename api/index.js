@@ -39,14 +39,45 @@ function loadHandler(path) {
   }
 }
 
+function firstQueryValue(value) {
+  if (Array.isArray(value)) {
+    return value.length ? value[0] : "";
+  }
+  return value || "";
+}
+
+function normalizePath(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
+}
+
+function resolveEndpoint(req) {
+  const requestUrl = String(req.url || "/api");
+  const parsed = new URL(requestUrl, "http://localhost");
+
+  let endpoint = normalizePath(parsed.pathname.replace(/^\/api\/?/, ""));
+
+  if (endpoint === "" || endpoint === "index") {
+    const hinted =
+      firstQueryValue(req.query && (req.query.path || req.query.endpoint)) ||
+      firstQueryValue(parsed.searchParams.getAll("path")) ||
+      parsed.searchParams.get("path") ||
+      parsed.searchParams.get("endpoint");
+
+    endpoint = normalizePath(hinted);
+  }
+
+  return endpoint;
+}
+
 module.exports = async function handler(req, res) {
   // default caching policy
   res.setHeader("Cache-Control", "no-store");
 
   try {
-    const base = req.url ? req.url.split("?")[0] : "";
-    let path = base.replace(/^\/api\//, "");
-    if (path.endsWith("/")) path = path.slice(0, -1);
+    const path = resolveEndpoint(req);
     if (path === "") {
       return res.status(200).json({ message: "API index", available: Object.keys(handlerPaths) });
     }
