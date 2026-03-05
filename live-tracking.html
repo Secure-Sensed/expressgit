@@ -162,6 +162,10 @@
       color: white;
       border: none;
       border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       font-weight: 600;
       cursor: pointer;
       margin-top: auto;
@@ -229,9 +233,68 @@
       margin-bottom: 8px;
     }
 
-    .legend-icon {
-      font-size: 20px;
-      width: 24px;
+    .legend-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      display: inline-block;
+    }
+
+    .legend-swatch-truck {
+      background: #ff6200;
+    }
+
+    .legend-swatch-parcel {
+      background: #4d148c;
+    }
+
+    .legend-swatch-driver {
+      background: #2e7d32;
+    }
+
+    .legend-swatch-delivered {
+      background: #0b5cab;
+    }
+
+    .button-icon-svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .map-pin-wrapper {
+      background: transparent;
+      border: none;
+    }
+
+    .map-pin {
+      border: 2px solid #fff;
+      border-radius: 7px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .map-pin-truck {
+      background: #ff6200;
+    }
+
+    .map-pin-parcel {
+      background: #4d148c;
+    }
+
+    .map-pin-driver {
+      background: #2e7d32;
     }
 
     .loading {
@@ -281,24 +344,30 @@
       <div id="shipmentList" class="shipment-list">
         <div class="loading">Loading shipments...</div>
       </div>
-      <button class="refresh-btn">🔄 Refresh</button>
+      <button class="refresh-btn">
+        <svg class="button-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-2.6-6.4"></path>
+          <path d="M21 4v6h-6"></path>
+        </svg>
+        <span>Refresh</span>
+      </button>
     </div>
 
     <div class="map-legend">
       <div class="legend-item">
-        <span class="legend-icon">🚚</span>
+        <span class="legend-swatch legend-swatch-truck" aria-hidden="true"></span>
         <span>Truck</span>
       </div>
       <div class="legend-item">
-        <span class="legend-icon">📦</span>
+        <span class="legend-swatch legend-swatch-parcel" aria-hidden="true"></span>
         <span>Parcel</span>
       </div>
       <div class="legend-item">
-        <span class="legend-icon">👤</span>
+        <span class="legend-swatch legend-swatch-driver" aria-hidden="true"></span>
         <span>Driver</span>
       </div>
       <div class="legend-item">
-        <span class="legend-icon">✓</span>
+        <span class="legend-swatch legend-swatch-delivered" aria-hidden="true"></span>
         <span>Delivered</span>
       </div>
     </div>
@@ -319,22 +388,20 @@
       updateInterval: null
     };
 
+    function createMapIcon(variant, label, size) {
+      return L.divIcon({
+        className: "map-pin-wrapper",
+        html: `<div class="map-pin map-pin-${variant}" style="width:${size}px;height:${size}px;">${label}</div>`,
+        iconSize: [size, size],
+        iconAnchor: [Math.round(size / 2), Math.round(size / 2)],
+        popupAnchor: [0, -Math.round(size / 2)]
+      });
+    }
+
     const icons = {
-      truck: L.icon({
-        iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHJ4PSI4IiBmaWxsPSIjZmY2MjAwIi8+PHRleHQgeD0iMTYiIHk9IjIwIiBmb250LXNpemU9IjIwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+ 8tVzIjwvdGV4dD48L3N2Zz4=',
-        iconSize: [32, 32],
-        popupAnchor: [0, -16]
-      }),
-      parcel: L.icon({
-        iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgiIGhlaWdodD0iMjgiIHZpZXdCb3g9IjAgMCAyOCAyOCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjgiIGhlaWdodD0iMjgiIHJ4PSI0IiBmaWxsPSIjNGQxNDhjIi8+PHRleHQgeD0iMTQiIHk9IjE4IiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+PiDwvdGV4dD48L3N2Zz4=',
-        iconSize: [28, 28],
-        popupAnchor: [0, -14]
-      }),
-      driver: L.icon({
-        iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMiIgZmlsbD0iIzJlNzYzMiIvPjx0ZXh0IHg9IjEyIiB5PSIxNiIgZm9udC1zaXplPSIxNiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfj6U8L3RleHQ+PC9zdmc+',
-        iconSize: [24, 24],
-        popupAnchor: [0, -12]
-      })
+      truck: createMapIcon("truck", "TR", 32),
+      parcel: createMapIcon("parcel", "PK", 28),
+      driver: createMapIcon("driver", "DR", 24)
     };
 
     async function initMap() {
@@ -357,12 +424,17 @@
       try {
         const response = await fetch('/api/shipments');
         const data = await response.json();
+        let normalized = [];
 
-        if (!data.results || !Array.isArray(data.results)) {
-          return;
+        if (Array.isArray(data.results)) {
+          normalized = data.results.filter(item => item && item.found && item.shipment);
+        } else if (Array.isArray(data.shipments)) {
+          normalized = data.shipments
+            .filter(shipment => shipment && shipment.trackingNumber)
+            .map(shipment => ({ found: true, shipment }));
         }
 
-        state.shipments = data.results.filter(s => s.found && s.shipment);
+        state.shipments = normalized;
 
         renderShipmentList();
         updateMapMarkers();
@@ -443,7 +515,7 @@
             icon: icons.parcel,
             title: `Origin: ${shipment.origin}`
           })
-            .bindPopup(`<strong>📍 Origin</strong><br>${shipment.origin}`)
+            .bindPopup(`<strong>Origin</strong><br>${shipment.origin}`)
             .addTo(state.map);
         }
 
@@ -481,7 +553,7 @@
             icon: icons.parcel,
             title: `Destination: ${shipment.destination}`
           })
-            .bindPopup(`<strong>🎯 Destination</strong><br>${shipment.destination}`)
+            .bindPopup(`<strong>Destination</strong><br>${shipment.destination}`)
             .addTo(state.map);
         }
       });
