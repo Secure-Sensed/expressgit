@@ -107,7 +107,7 @@ values
     'TCN-99450001',
     'In Transit',
     'Memphis, TN',
-    'Lagos, NG',
+    'Los Angeles, CA',
     '2026-02-10T16:30:00Z',
     'Paris, FR',
     null

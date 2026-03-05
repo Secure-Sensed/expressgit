@@ -196,13 +196,13 @@ async function run() {
       shipment: {
         trackingNumber,
         status: "in_transit",
-        origin: "Lagos, NG",
-        destination: "Abuja, NG",
-        lastLocation: "Ibadan, NG",
+        origin: "Memphis, TN",
+        destination: "Atlanta, GA",
+        lastLocation: "Nashville, TN",
         customerEmail,
         customerName: "QA Flow User",
-        currentLat: 7.3775,
-        currentLng: 3.947
+        currentLat: 36.1627,
+        currentLng: -86.7816
       }
     }
   });
@@ -216,17 +216,17 @@ async function run() {
     },
     body: {
       trackingNumber,
-      lastLocation: "Ilorin, NG",
-      currentLat: 8.4966,
-      currentLng: 4.5421
+      lastLocation: "Louisville, KY",
+      currentLat: 38.2527,
+      currentLng: -85.7585
     }
   });
   assertStatus(updateLocation, 200, "admin update location");
-  assert.strictEqual(updateLocation.json.shipment.lastLocation, "Ilorin, NG");
+  assert.strictEqual(updateLocation.json.shipment.lastLocation, "Louisville, KY");
 
   const trackUpdated = await callApi(`/api/track?mode=tracking&q=${encodeURIComponent(trackingNumber)}`);
   assertStatus(trackUpdated, 200, "track updated shipment");
-  assert.strictEqual(trackUpdated.json.results[0].shipment.lastLocation, "Ilorin, NG");
+  assert.strictEqual(trackUpdated.json.results[0].shipment.lastLocation, "Louisville, KY");
 
   const stats = await callApi("/api/admin/stats");
   assertStatus(stats, 200, "admin stats");

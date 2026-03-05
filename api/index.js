@@ -1,43 +1,26 @@
-// Single entrypoint to consolidate all API handlers for Vercel Hobby plan
+// Single entrypoint to consolidate all API handlers for Vercel Hobby plan.
+// Keep requires static so Vercel's file tracer reliably bundles every handler.
+const handlers = {
+  "vehicles": require("../lib/api/vehicles"),
+  "location": require("../lib/api/location"),
+  "health": require("../lib/api/health"),
+  "track": require("../lib/api/track"),
+  "shipments": require("../lib/api/shipments"),
+  "shipments/request": require("../lib/api/shipments/request"),
 
-const handlerPaths = {
-  "vehicles": "../lib/api/vehicles",
-  "location": "../lib/api/location",
-  "health": "../lib/api/health",
-  "track": "../lib/api/track",
-  "shipments": "../lib/api/shipments",
-  "shipments/request": "../lib/api/shipments/request",
+  "admin/stats": require("../lib/api/admin/stats"),
+  "admin/upsert": require("../lib/api/admin/upsert"),
+  "admin/delete": require("../lib/api/admin/delete"),
+  "admin/users": require("../lib/api/admin/users"),
+  "admin/users/delete": require("../lib/api/admin/users/delete"),
+  "admin/update-location": require("../lib/api/admin/update-location"),
 
-  "admin/stats": "../lib/api/admin/stats",
-  "admin/upsert": "../lib/api/admin/upsert",
-  "admin/delete": "../lib/api/admin/delete",
-  "admin/users": "../lib/api/admin/users",
-  "admin/users/delete": "../lib/api/admin/users/delete",
-  "admin/update-location": "../lib/api/admin/update-location",
-
-  "auth/seed": "../lib/api/auth/seed",
-  "auth/login": "../lib/api/auth/login",
-  "auth/signup": "../lib/api/auth/signup",
-  "auth/logout": "../lib/api/auth/logout",
-  "auth/session": "../lib/api/auth/session",
-
-  // keep internal helpers available if needed
-  "_subscriptions": "../lib/api/_subscriptions"
+  "auth/seed": require("../lib/api/auth/seed"),
+  "auth/login": require("../lib/api/auth/login"),
+  "auth/signup": require("../lib/api/auth/signup"),
+  "auth/logout": require("../lib/api/auth/logout"),
+  "auth/session": require("../lib/api/auth/session")
 };
-
-const cache = {};
-
-function loadHandler(path) {
-  if (cache[path]) return cache[path];
-  try {
-    const h = require(path);
-    cache[path] = h;
-    return h;
-  } catch (err) {
-    console.error(`Failed to load handler from ${path}:`, err.message);
-    return null;
-  }
-}
 
 function firstQueryValue(value) {
   if (Array.isArray(value)) {
@@ -79,16 +62,15 @@ module.exports = async function handler(req, res) {
   try {
     const path = resolveEndpoint(req);
     if (path === "") {
-      return res.status(200).json({ message: "API index", available: Object.keys(handlerPaths) });
+      return res.status(200).json({ message: "API index", available: Object.keys(handlers) });
     }
 
-    const handlerPath = handlerPaths[path];
-    if (!handlerPath) {
+    const h = handlers[path];
+    if (!h) {
       return res.status(404).json({ error: "API endpoint not found." });
     }
 
-    const h = loadHandler(handlerPath);
-    if (h && typeof h === "function") {
+    if (typeof h === "function") {
       return h(req, res);
     }
 
