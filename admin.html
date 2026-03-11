@@ -234,6 +234,28 @@
       display: block;
     }
 
+    .tracking-inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tracking-inline input {
+      flex: 1;
+    }
+
+    .preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .preset-buttons .admin-btn {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
     .admin-actions {
       display: flex;
       flex-wrap: wrap;
@@ -334,19 +356,53 @@
 
       <!-- Quick Generator -->
       <div class="admin-panel quick-gen">
-        <h2>Quick Generate</h2>
-        <p class="admin-help">Create shipping codes instantly with one click.</p>
-        
-        <div class="quick-buttons">
-          <button type="button" class="admin-btn quick-btn" id="genPending" data-status="Pending">
-            Generate Pending
-          </button>
-          <button type="button" class="admin-btn quick-btn" id="genTransit" data-status="In Transit">
-            Generate In Transit
-          </button>
-          <button type="button" class="admin-btn quick-btn" id="genDelivered" data-status="Delivered">
-            Generate Delivered
-          </button>
+        <h2>Create Parcel</h2>
+        <p class="admin-help">Fast mode: enter token once, choose status, optionally assign customer email, then generate.</p>
+
+        <div class="admin-form-grid">
+          <div class="admin-field">
+            <label for="quickToken">Admin Token*</label>
+            <input id="quickToken" type="password" autocomplete="off" placeholder="Enter ADMIN_API_TOKEN">
+          </div>
+
+          <div class="admin-field">
+            <label for="quickStatus">Status*</label>
+            <select id="quickStatus">
+              <option value="In Transit" selected>In Transit</option>
+              <option value="Pending">Pending</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+          </div>
+
+          <div class="admin-field full">
+            <label for="quickCustomerEmail">Customer Email (optional)</label>
+            <input id="quickCustomerEmail" type="email" placeholder="client@example.com">
+          </div>
+
+          <div class="admin-field">
+            <label for="quickTrackingNumber">Tracking #</label>
+            <input id="quickTrackingNumber" type="text" placeholder="Auto-filled after generate or select">
+          </div>
+
+          <div class="admin-field">
+            <label for="quickLocation">Current Location</label>
+            <input id="quickLocation" type="text" placeholder="e.g. Columbus, OH">
+          </div>
+
+          <div class="admin-field">
+            <label for="quickLat">Latitude</label>
+            <input id="quickLat" type="number" step="any" placeholder="e.g. 39.9612">
+          </div>
+
+          <div class="admin-field">
+            <label for="quickLng">Longitude</label>
+            <input id="quickLng" type="number" step="any" placeholder="e.g. -82.9988">
+          </div>
+        </div>
+
+        <div class="admin-actions">
+          <button type="button" class="admin-btn quick-btn" id="quickCreateBtn">Generate Parcel</button>
+          <button type="button" class="admin-btn secondary" id="quickUpdateBtn">Update Location Live</button>
         </div>
 
         <div class="admin-message" id="quickMessage"></div>
@@ -365,8 +421,8 @@
 
         <!-- Edit/Create Form -->
         <section class="admin-panel">
-          <h1>Shipment Details</h1>
-          <p class="admin-help">Edit selected shipment or create a new one.</p>
+          <h1>Advanced Details</h1>
+          <p class="admin-help">Optional: edit a selected shipment or create one manually.</p>
 
           <form id="adminForm" novalidate>
             <div class="admin-form-grid">
@@ -382,7 +438,10 @@
 
               <div class="admin-field">
                 <label for="trackingNumber">Tracking #*</label>
-                <input id="trackingNumber" type="text" placeholder="Auto or enter" readonly style="background:#f5f5f5;">
+                <div class="tracking-inline">
+                  <input id="trackingNumber" type="text" placeholder="Auto or enter" readonly style="background:#f5f5f5;">
+                  <button type="button" id="generateTrackingNumber" class="admin-btn secondary">Generate</button>
+                </div>
                 <small class="field-hint">Auto-generated if empty</small>
               </div>
 
@@ -415,12 +474,25 @@
 
               <div class="admin-field full">
                 <label for="lastLocation">Current Location*</label>
-                <input id="lastLocation" type="text" placeholder="Where is it now?" required>                <div class="preset-buttons">
+                <input id="lastLocation" type="text" placeholder="Where is it now?" required>
+                <div class="preset-buttons">
                   <button type="button" class="admin-btn secondary preset-btn" data-lat="35.1495" data-lng="-90.0490" data-location="Memphis, TN">Memphis</button>
                   <button type="button" class="admin-btn secondary preset-btn" data-lat="39.7684" data-lng="-86.1581" data-location="Indianapolis, IN">Indianapolis</button>
                   <button type="button" class="admin-btn secondary preset-btn" data-lat="32.7767" data-lng="-96.7970" data-location="Dallas, TX">Dallas</button>
                   <button type="button" class="admin-btn secondary preset-btn" data-lat="40.7357" data-lng="-74.1724" data-location="Newark, NJ">Newark</button>
-                </div>              </div>
+                </div>
+                <small class="field-hint">Preset buttons fill current location and map coordinates.</small>
+              </div>
+
+              <div class="admin-field">
+                <label for="currentLat">Current Latitude</label>
+                <input id="currentLat" type="number" step="any" placeholder="e.g. 39.7684">
+              </div>
+
+              <div class="admin-field">
+                <label for="currentLng">Current Longitude</label>
+                <input id="currentLng" type="number" step="any" placeholder="e.g. -86.1581">
+              </div>
 
               <!-- Optional Fields -->
               <div class="admin-field full" style="border-top:1px solid #eee;padding-top:12px;margin-top:12px;">
@@ -498,6 +570,34 @@
   </main>
 
   <script>
+    const PRESETS = {
+      Pending: {
+        origin: "Memphis, TN",
+        destination: "Atlanta, GA",
+        lastLocation: "Memphis, TN",
+        currentLat: 35.1495,
+        currentLng: -90.0490,
+        daysToDelivery: 3
+      },
+      "In Transit": {
+        origin: "Indianapolis, IN",
+        destination: "Newark, NJ",
+        lastLocation: "Columbus, OH",
+        currentLat: 39.9612,
+        currentLng: -82.9988,
+        daysToDelivery: 1
+      },
+      Delivered: {
+        origin: "Dallas, TX",
+        destination: "Austin, TX",
+        lastLocation: "Austin, TX",
+        currentLat: 30.2672,
+        currentLng: -97.7431,
+        daysToDelivery: 0,
+        receivedBy: "Front Desk"
+      }
+    };
+
     const state = {
       shipments: [],
       selectedTracking: "",
@@ -510,8 +610,18 @@
       form: document.getElementById("adminForm"),
       formMessage: document.getElementById("formMessage"),
       quickMessage: document.getElementById("quickMessage"),
+      quickToken: document.getElementById("quickToken"),
+      quickStatus: document.getElementById("quickStatus"),
+      quickCustomerEmail: document.getElementById("quickCustomerEmail"),
+      quickTrackingNumber: document.getElementById("quickTrackingNumber"),
+      quickLocation: document.getElementById("quickLocation"),
+      quickLat: document.getElementById("quickLat"),
+      quickLng: document.getElementById("quickLng"),
+      quickCreateBtn: document.getElementById("quickCreateBtn"),
+      quickUpdateBtn: document.getElementById("quickUpdateBtn"),
       deleteShipment: document.getElementById("deleteShipment"),
       clearForm: document.getElementById("clearForm"),
+      generateTrackingNumber: document.getElementById("generateTrackingNumber"),
       adminToken: document.getElementById("adminToken"),
       trackingNumber: document.getElementById("trackingNumber"),
       referenceNumber: document.getElementById("referenceNumber"),
@@ -520,6 +630,8 @@
       origin: document.getElementById("origin"),
       destination: document.getElementById("destination"),
       lastLocation: document.getElementById("lastLocation"),
+      currentLat: document.getElementById("currentLat"),
+      currentLng: document.getElementById("currentLng"),
       estimatedDelivery: document.getElementById("estimatedDelivery"),
       podDeliveredAt: document.getElementById("podDeliveredAt"),
       podReceivedBy: document.getElementById("podReceivedBy"),
@@ -534,12 +646,42 @@
     function init() {
       if (state.adminToken) {
         elements.adminToken.value = state.adminToken;
+        if (elements.quickToken) elements.quickToken.value = state.adminToken;
       }
 
       elements.form.addEventListener("submit", onSave);
       elements.deleteShipment.addEventListener("click", onDelete);
       elements.clearForm.addEventListener("click", () => clearForm(true));
       elements.status.addEventListener("change", onStatusChanged);
+
+      if (elements.quickToken && elements.adminToken) {
+        elements.quickToken.addEventListener("input", () => {
+          elements.adminToken.value = elements.quickToken.value;
+        });
+        elements.adminToken.addEventListener("input", () => {
+          elements.quickToken.value = elements.adminToken.value;
+        });
+      }
+
+      if (elements.quickCreateBtn) {
+        elements.quickCreateBtn.addEventListener("click", () => {
+          quickGenerate(elements.quickStatus ? elements.quickStatus.value : "In Transit", {
+            customerEmail: elements.quickCustomerEmail ? elements.quickCustomerEmail.value : ""
+          });
+        });
+      }
+
+      if (elements.quickUpdateBtn) {
+        elements.quickUpdateBtn.addEventListener("click", quickUpdateLocation);
+      }
+
+      if (elements.generateTrackingNumber) {
+        elements.generateTrackingNumber.addEventListener("click", () => {
+          const generated = generateTrackingNumber();
+          elements.trackingNumber.value = generated;
+          setMessage(elements.formMessage, `Generated tracking code: ${generated}`, "info");
+        });
+      }
 
       // preset location buttons
       document.querySelectorAll(".preset-btn").forEach(btn => {
@@ -548,8 +690,8 @@
           const lng = btn.getAttribute("data-lng");
           const loc = btn.getAttribute("data-location");
           if (lat && lng) {
-            if (elements.currentLat) elements.currentLat.value = lat;
-            if (elements.currentLng) elements.currentLng.value = lng;
+            elements.currentLat.value = lat;
+            elements.currentLng.value = lng;
           }
           if (loc) elements.lastLocation.value = loc;
         });
@@ -560,11 +702,6 @@
       if (showUsersBtn) {
         showUsersBtn.addEventListener('click', toggleUsersPanel);
       }
-
-      // Quick generator buttons
-      document.querySelectorAll(".quick-btn").forEach(btn => {
-        btn.addEventListener("click", () => quickGenerate(btn.getAttribute("data-status")));
-      });
 
       loadShipments();
       loadStats();
@@ -599,10 +736,10 @@
       if (preset && !elements.lastLocation.value) {
         elements.lastLocation.value = preset.lastLocation;
       }
-    }
-
-    async function quickGenerate(status) {
-      const preset = PRESETS[status];
+      if (preset && !elements.currentLat.value && !elements.currentLng.value) {
+        elements.currentLat.value = String(preset.currentLat);
+        elements.currentLng.value = String(preset.currentLng);
+      }
     }
 
     function toggleUsersPanel() {
@@ -633,21 +770,28 @@
         });
     }
 
-    async function quickGenerate(status) {
+    async function quickGenerate(status, options = {}) {
       const preset = PRESETS[status];
       if (!preset) return;
 
       const trackingNumber = generateTrackingNumber();
-      const token = elements.adminToken.value.trim();
+      const token = (elements.quickToken && elements.quickToken.value.trim()) || elements.adminToken.value.trim();
+      const customerEmail = String(options.customerEmail || "").trim().toLowerCase();
 
       if (!token) {
         setMessage(elements.quickMessage, "Please enter admin token first", "error");
-        elements.adminToken.focus();
+        if (elements.quickToken) {
+          elements.quickToken.focus();
+        } else {
+          elements.adminToken.focus();
+        }
         return;
       }
 
       state.adminToken = token;
       localStorage.setItem("adminToken", token);
+      elements.adminToken.value = token;
+      if (elements.quickToken) elements.quickToken.value = token;
 
       const shipment = {
         trackingNumber,
@@ -655,12 +799,19 @@
         origin: preset.origin,
         destination: preset.destination,
         lastLocation: preset.lastLocation,
+        currentLat: preset.currentLat,
+        currentLng: preset.currentLng,
+        customerEmail: customerEmail || undefined,
         events: [{
           title: `Shipment marked as ${status}`,
           location: preset.lastLocation,
           timestamp: new Date().toISOString()
         }]
       };
+
+      if (customerEmail) {
+        shipment.customerName = customerEmail.split("@")[0].replace(/[._-]+/g, " ");
+      }
 
       if (preset.daysToDelivery >= 0) {
         const eta = new Date();
@@ -688,15 +839,108 @@
         });
 
         await loadShipments();
-        setMessage(elements.quickMessage, `✓ Created: ${trackingNumber}`, "success");
+        setMessage(
+          elements.quickMessage,
+          `✓ Created: ${trackingNumber}${customerEmail ? ` for ${customerEmail}` : ""}`,
+          "success"
+        );
 
         // Auto-select the new shipment
         const savedShipment = state.shipments.find(s => s.trackingNumber === trackingNumber);
         if (savedShipment) {
           selectShipment(savedShipment);
+        } else {
+          elements.trackingNumber.value = trackingNumber;
+          if (elements.quickTrackingNumber) elements.quickTrackingNumber.value = trackingNumber;
+          if (elements.quickLocation) elements.quickLocation.value = shipment.lastLocation || "";
+          if (elements.quickLat) elements.quickLat.value = shipment.currentLat ?? "";
+          if (elements.quickLng) elements.quickLng.value = shipment.currentLng ?? "";
         }
       } catch (error) {
         setMessage(elements.quickMessage, error.message || "Failed to create shipment", "error");
+      }
+    }
+
+    async function quickUpdateLocation() {
+      const token = (elements.quickToken && elements.quickToken.value.trim()) || elements.adminToken.value.trim();
+      const trackingNumber = String(
+        (elements.quickTrackingNumber && elements.quickTrackingNumber.value) ||
+        state.selectedTracking ||
+        elements.trackingNumber.value ||
+        ""
+      ).trim().toUpperCase();
+      const lastLocation = String((elements.quickLocation && elements.quickLocation.value) || "").trim();
+
+      if (!token) {
+        setMessage(elements.quickMessage, "Please enter admin token first", "error");
+        if (elements.quickToken) elements.quickToken.focus();
+        return;
+      }
+
+      if (!trackingNumber) {
+        setMessage(elements.quickMessage, "Enter or select a tracking number first", "error");
+        if (elements.quickTrackingNumber) elements.quickTrackingNumber.focus();
+        return;
+      }
+
+      if (!lastLocation) {
+        setMessage(elements.quickMessage, "Enter the latest location", "error");
+        if (elements.quickLocation) elements.quickLocation.focus();
+        return;
+      }
+
+      let currentLat = null;
+      let currentLng = null;
+
+      try {
+        currentLat = parseCoordinate(elements.quickLat ? elements.quickLat.value : "", "Latitude");
+        currentLng = parseCoordinate(elements.quickLng ? elements.quickLng.value : "", "Longitude");
+      } catch (error) {
+        setMessage(elements.quickMessage, error.message, "error");
+        return;
+      }
+
+      if ((currentLat === null) !== (currentLng === null)) {
+        setMessage(elements.quickMessage, "Provide both latitude and longitude, or leave both empty", "error");
+        return;
+      }
+
+      state.adminToken = token;
+      localStorage.setItem("adminToken", token);
+      elements.adminToken.value = token;
+      if (elements.quickToken) elements.quickToken.value = token;
+
+      const body = {
+        trackingNumber,
+        lastLocation
+      };
+      if (currentLat !== null && currentLng !== null) {
+        body.currentLat = currentLat;
+        body.currentLng = currentLng;
+      }
+
+      setMessage(elements.quickMessage, "Updating live location...", "info");
+
+      try {
+        const payload = await fetchJson("/api/admin/update-location", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-token": token
+          },
+          body: JSON.stringify(body)
+        });
+
+        await loadShipments();
+
+        const updatedShipment = payload && payload.shipment ? payload.shipment : null;
+        if (updatedShipment) {
+          selectShipment(updatedShipment);
+        }
+
+        setMessage(elements.quickMessage, `✓ Location updated: ${trackingNumber}`, "success");
+      } catch (error) {
+        setMessage(elements.quickMessage, error.message || "Failed to update location", "error");
       }
     }
 
@@ -764,6 +1008,12 @@
       elements.origin.value = shipment.origin || "";
       elements.destination.value = shipment.destination || "";
       elements.lastLocation.value = shipment.lastLocation || "";
+      elements.currentLat.value = shipment.currentLat ?? "";
+      elements.currentLng.value = shipment.currentLng ?? "";
+      if (elements.quickTrackingNumber) elements.quickTrackingNumber.value = shipment.trackingNumber || "";
+      if (elements.quickLocation) elements.quickLocation.value = shipment.lastLocation || "";
+      if (elements.quickLat) elements.quickLat.value = shipment.currentLat ?? "";
+      if (elements.quickLng) elements.quickLng.value = shipment.currentLng ?? "";
       elements.estimatedDelivery.value = toDatetimeLocal(shipment.estimatedDelivery);
       elements.eventTitle.value = "";
       elements.eventLocation.value = "";
@@ -782,7 +1032,12 @@
       state.selectedTracking = "";
       elements.form.reset();
       elements.adminToken.value = token;
+      if (elements.quickToken) elements.quickToken.value = token;
       elements.trackingNumber.value = "";
+      if (elements.quickTrackingNumber) elements.quickTrackingNumber.value = "";
+      if (elements.quickLocation) elements.quickLocation.value = "";
+      if (elements.quickLat) elements.quickLat.value = "";
+      if (elements.quickLng) elements.quickLng.value = "";
       renderShipments();
       setMessage(elements.formMessage, "", "");
     }
@@ -806,6 +1061,7 @@
 
       state.adminToken = token;
       localStorage.setItem("adminToken", token);
+      if (elements.quickToken) elements.quickToken.value = token;
 
       setMessage(elements.formMessage, "Saving...", "info");
 
@@ -853,6 +1109,7 @@
 
       state.adminToken = token;
       localStorage.setItem("adminToken", token);
+      if (elements.quickToken) elements.quickToken.value = token;
 
       setMessage(elements.formMessage, "Deleting...", "info");
 
@@ -899,6 +1156,16 @@
         estimatedDelivery: fromDatetimeLocal(elements.estimatedDelivery.value)
       };
 
+      const currentLat = parseCoordinate(elements.currentLat.value, "Current latitude");
+      const currentLng = parseCoordinate(elements.currentLng.value, "Current longitude");
+      if ((currentLat === null) !== (currentLng === null)) {
+        throw new Error("Provide both latitude and longitude, or leave both empty");
+      }
+      if (currentLat !== null && currentLng !== null) {
+        payload.currentLat = currentLat;
+        payload.currentLng = currentLng;
+      }
+
       if (elements.referenceNumber.value.trim()) {
         payload.referenceNumber = elements.referenceNumber.value.trim().toUpperCase();
       }
@@ -912,6 +1179,16 @@
       if (event) payload.events = [event];
 
       return payload;
+    }
+
+    function parseCoordinate(value, label) {
+      const input = String(value || "").trim();
+      if (!input) return null;
+      const numeric = Number(input);
+      if (!Number.isFinite(numeric)) {
+        throw new Error(`${label} must be a valid number`);
+      }
+      return numeric;
     }
 
     function buildProofOfDelivery() {

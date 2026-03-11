@@ -385,7 +385,8 @@
       markers: {},
       selectedShipment: null,
       shipments: [],
-      updateInterval: null
+      updateInterval: null,
+      requestedTracking: (new URLSearchParams(window.location.search).get("tracking") || "").trim().toUpperCase()
     };
 
     function createMapIcon(variant, label, size) {
@@ -438,6 +439,17 @@
 
         renderShipmentList();
         updateMapMarkers();
+
+        if (state.requestedTracking) {
+          const requested = state.shipments.find((item) => {
+            const tracking = item && item.shipment && item.shipment.trackingNumber;
+            return String(tracking || "").trim().toUpperCase() === state.requestedTracking;
+          });
+          if (requested && requested.shipment) {
+            selectShipment(requested.shipment.trackingNumber);
+            state.requestedTracking = "";
+          }
+        }
       } catch (error) {
         console.error('Failed to load shipments:', error);
       }

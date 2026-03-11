@@ -229,11 +229,165 @@
       if (trackForm) {
         const exampleBtn = document.getElementById('exampleBtn');
         const pasteBtn = document.getElementById('pasteBtn');
+        const LIVE_REFRESH_MS = 8000;
+        let liveRefreshTimer = null;
+        let liveRefreshInFlight = false;
+        let liveMap = null;
+
+        function stopLiveRefresh() {
+          if (liveRefreshTimer) {
+            clearInterval(liveRefreshTimer);
+            liveRefreshTimer = null;
+          }
+          liveRefreshInFlight = false;
+        }
+
+        function resetMap() {
+          if (liveMap) {
+            liveMap.remove();
+            liveMap = null;
+          }
+        }
+
+        function toFiniteNumber(value) {
+          const numeric = Number(value);
+          return Number.isFinite(numeric) ? numeric : null;
+        }
+
+        function renderMap(shipment) {
+          const mapEl = document.getElementById('map');
+          if (!mapEl || typeof L === 'undefined') return;
+
+          const lat = toFiniteNumber(shipment.currentLat);
+          const lng = toFiniteNumber(shipment.currentLng);
+
+          if (lat === null || lng === null) {
+            mapEl.style.display = 'none';
+            return;
+          }
+
+          mapEl.style.display = 'block';
+          liveMap = L.map(mapEl).setView([lat, lng], 8);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(liveMap);
+          L.marker([lat, lng]).addTo(liveMap)
+            .bindPopup(`<strong>${escapeHtml(shipment.trackingNumber)}</strong><br>${escapeHtml(shipment.lastLocation || 'Current location')}`)
+            .openPopup();
+        }
+
+        function renderShipment(shipment, options = {}) {
+          resetMap();
+
+          const refreshedAt = new Date().toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          const progress = getStatusProgress(shipment.status);
+          const eta = shipment.estimatedDelivery
+            ? new Date(shipment.estimatedDelivery).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Pending';
+          const eventsHtml = (shipment.events || []).map(ev => `<li class="event-item"><strong>${escapeHtml(ev.title)}</strong> — ${escapeHtml(ev.location)} — ${escapeHtml(ev.timestamp)}</li>`).join('');
+
+          trackResult.innerHTML = `
+            <div class="result-head">
+              <div>
+                <h3 class="result-trk">${escapeHtml(shipment.trackingNumber)}</h3>
+                <div class="muted">${escapeHtml(shipment.origin)} → ${escapeHtml(shipment.destination)}</div>
+              </div>
+              <div class="result-actions">
+                <button class="link-btn" id="copyTrack">Copy</button>
+                <a class="link-btn" href="live-tracking.html?tracking=${encodeURIComponent(shipment.trackingNumber)}">Open Live Map</a>
+              </div>
+            </div>
+            <div class="progress-section">
+              <div class="progress-bar" style="--progress:${progress}%"></div>
+              <div class="progress-info">
+                <strong>Status:</strong> ${escapeHtml(shipment.status)} • <strong>ETA:</strong> ${eta}
+              </div>
+            </div>
+            <p><strong>Last known location:</strong> ${escapeHtml(shipment.lastLocation || 'Not available')}</p>
+            <p class="muted">Live updates every ${Math.floor(LIVE_REFRESH_MS / 1000)}s • Last refresh ${escapeHtml(refreshedAt)}</p>
+            <div id="map" style="height:300px; margin:12px 0; display:none"></div>
+            <h4>Recent events</h4>
+            <ul class="event-list">${eventsHtml || '<li class="event-item">No events available yet.</li>'}</ul>
+          `;
+
+          const copyBtn = document.getElementById('copyTrack');
+          if (copyBtn) {
+            copyBtn.addEventListener('click', function(){
+              navigator.clipboard && navigator.clipboard.writeText(shipment.trackingNumber).then(() => {
+                copyBtn.textContent = 'Copied';
+                setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+              }).catch(() => {
+                alert('Copy failed — select and copy manually.');
+              });
+            });
+          }
+
+          renderMap(shipment);
+        }
+
+        async function fetchAndRenderTracking(query, options = {}) {
+          const silent = Boolean(options.silent);
+          const q = String(query || '').trim();
+
+          if (!q) {
+            if (!silent) trackResult.textContent = 'Enter a tracking value.';
+            return false;
+          }
+
+          if (!silent) {
+            trackResult.textContent = 'Loading...';
+          }
+
+          const payload = await fetchJson('/api/track?mode=tracking&q=' + encodeURIComponent(q), { method: 'GET' });
+          const item = (payload.results || [])[0];
+
+          if (!item || !item.found) {
+            if (!silent) {
+              trackResult.innerHTML = '<p>No shipment found for that value.</p>';
+            }
+            return false;
+          }
+
+          const shipment = item.shipment;
+          if (!silent) {
+            saveRecentSearch(shipment.trackingNumber);
+            renderRecentSearches();
+            trackQuery.value = shipment.trackingNumber;
+          }
+
+          renderShipment(shipment, { silent });
+          return true;
+        }
+
+        function startLiveRefresh(trackingNumber) {
+          stopLiveRefresh();
+          const tracking = String(trackingNumber || '').trim();
+          if (!tracking) return;
+
+          liveRefreshTimer = setInterval(async () => {
+            if (liveRefreshInFlight) return;
+            liveRefreshInFlight = true;
+            try {
+              const found = await fetchAndRenderTracking(tracking, { silent: true });
+              if (!found) {
+                stopLiveRefresh();
+              }
+            } catch (_error) {
+              // keep existing UI state; retry on next interval
+            } finally {
+              liveRefreshInFlight = false;
+            }
+          }, LIVE_REFRESH_MS);
+        }
 
         if (exampleBtn) {
           exampleBtn.addEventListener('click', function(e){
             e.preventDefault();
-            trackQuery.value = '771975185243';
+            trackQuery.value = 'TRK-NYC-001';
             trackQuery.focus();
             trackQuery.select();
           });
@@ -257,75 +411,24 @@
 
         trackForm.addEventListener('submit', async function(e){
           e.preventDefault();
-          trackResult.textContent = 'Loading...';
           const q = (trackQuery.value || '').trim();
           if (!q) { trackResult.textContent = 'Enter a tracking value.'; return; }
 
+          stopLiveRefresh();
+
           try {
-            const payload = await fetchJson('/api/track?mode=tracking&q=' + encodeURIComponent(q), { method: 'GET' });
-            const item = (payload.results || [])[0];
-            if (!item || !item.found) {
-              trackResult.innerHTML = '<p>No shipment found for that value.</p>';
-              return;
-            }
-            const s = item.shipment;
-            saveRecentSearch(s.trackingNumber);
-            renderRecentSearches();
-
-            const progress = getStatusProgress(s.status);
-            const eta = s.estimatedDelivery ? new Date(s.estimatedDelivery).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending';
-            const eventsHtml = (s.events || []).map(ev => `<li class="event-item"><strong>${escapeHtml(ev.title)}</strong> — ${escapeHtml(ev.location)} — ${escapeHtml(ev.timestamp)}</li>`).join('');
-
-            trackResult.innerHTML = `
-              <div class="result-head">
-                <div>
-                  <h3 class="result-trk">${escapeHtml(s.trackingNumber)}</h3>
-                  <div class="muted">${escapeHtml(s.origin)} → ${escapeHtml(s.destination)}</div>
-                </div>
-                <div class="result-actions">
-                  <button class="link-btn" id="copyTrack">Copy</button>
-                </div>
-              </div>
-              <div class="progress-section">
-                <div class="progress-bar" style="--progress:${progress}%"></div>
-                <div class="progress-info">
-                  <strong>Status:</strong> ${escapeHtml(s.status)} • <strong>ETA:</strong> ${eta}
-                </div>
-              </div>
-              <p><strong>Last known location:</strong> ${escapeHtml(s.lastLocation || 'Not available')}</p>
-              <div id="map" style="height:300px; margin:12px 0; display:none"></div>
-              <h4>Recent events</h4>
-              <ul class="event-list">${eventsHtml || '<li class="event-item">No events available yet.</li>'}</ul>
-            `;
-
-            const copyBtn = document.getElementById('copyTrack');
-            if (copyBtn) {
-              copyBtn.addEventListener('click', function(){
-                navigator.clipboard && navigator.clipboard.writeText(s.trackingNumber).then(() => {
-                  copyBtn.textContent = 'Copied';
-                  setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
-                }).catch(() => {
-                  alert('Copy failed — select and copy manually.');
-                });
-              });
-            }
-
-            // initialize map if coordinates provided
-            if (s.currentLat && s.currentLng) {
-              const mapEl = document.getElementById('map');
-              if (mapEl) {
-                mapEl.style.display = 'block';
-                const map = L.map(mapEl).setView([s.currentLat, s.currentLng], 8);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                  attribution: '&copy; OpenStreetMap contributors'
-                }).addTo(map);
-                L.marker([s.currentLat, s.currentLng]).addTo(map);
-              }
+            const found = await fetchAndRenderTracking(q, { silent: false });
+            if (found) {
+              startLiveRefresh(q);
+            } else {
+              resetMap();
             }
           } catch (err) {
             trackResult.textContent = err.message || 'Unable to track right now.';
           }
         });
+
+        window.addEventListener('beforeunload', stopLiveRefresh);
       }
 
       if (requestSection && requestForm) {
