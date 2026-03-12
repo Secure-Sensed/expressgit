@@ -58,6 +58,20 @@
 
           <div id="recentSearches" class="recent-list hidden"></div>
           <div id="trackResult" class="card result-card" aria-live="polite"></div>
+          <div id="supportPanel" class="card support-card hidden" aria-live="polite">
+            <div class="support-head">
+              <h3>Chat with Support</h3>
+              <p class="muted" id="supportSubtitle">We reply in minutes.</p>
+            </div>
+            <div id="supportMessages" class="support-messages"></div>
+            <form id="supportForm" class="support-form">
+              <label class="visually-hidden" for="supportInput">Message</label>
+              <div class="support-input-row">
+                <input id="supportInput" type="text" placeholder="Type a message..." autocomplete="off">
+                <button type="submit" class="btn btn-primary">Send</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -360,6 +374,8 @@
           }
 
           renderShipment(shipment, { silent });
+          notifyTrackingSearch(item);
+          initSupportChat(shipment.trackingNumber);
           return true;
         }
 
@@ -474,6 +490,64 @@
             requestResult.textContent = err.message || 'Unable to submit request.';
           }
         });
+      }
+
+      // ---------------- Support Chat (user) ----------------
+      function initSupportChat(trackingNumber) {
+        const panel = document.getElementById("supportPanel");
+        const list = document.getElementById("supportMessages");
+        const form = document.getElementById("supportForm");
+        const input = document.getElementById("supportInput");
+        if (!panel || !list || !form || !input) return;
+        panel.classList.remove("hidden");
+
+        let polling = null;
+
+        async function loadMessages() {
+          const payload = await fetchJson(`/api/support?tracking=${encodeURIComponent(trackingNumber)}`, { method: "GET" });
+          const msgs = payload.messages || [];
+          list.innerHTML = msgs.map(msg => `
+            <div class="chat-row ${msg.from === "admin" ? "chat-admin" : "chat-user"}">
+              <div class="chat-meta">${msg.from === "admin" ? "Support" : "You"} · ${escapeHtml(new Date(msg.timestamp).toLocaleTimeString())}</div>
+              <div class="chat-bubble">${escapeHtml(msg.body)}</div>
+            </div>
+          `).join("") || "<div class=\"chat-empty\">No messages yet</div>";
+          list.scrollTop = list.scrollHeight;
+        }
+
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const text = input.value.trim();
+          if (!text) return;
+          input.value = "";
+          await fetchJson("/api/support", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ trackingNumber, message: text, from: "user" })
+          }).catch(() => {});
+          loadMessages();
+        };
+
+        loadMessages();
+        if (polling) clearInterval(polling);
+        polling = setInterval(loadMessages, 5000);
+        window.addEventListener("beforeunload", () => polling && clearInterval(polling));
+      }
+
+      function notifyTrackingSearch(item) {
+        if (!item) return;
+        const tracking = item.shipment && item.shipment.trackingNumber
+          ? item.shipment.trackingNumber
+          : item.query;
+        if (!tracking) return;
+        const message = item.found
+          ? `User viewed tracking ${tracking}`
+          : `User searched for ${tracking} (not found)`;
+        fetch('/api/support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackingNumber: tracking, message, from: 'user' })
+        }).catch(() => {});
       }
     });
   </script>

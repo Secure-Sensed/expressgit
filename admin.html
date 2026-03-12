@@ -359,7 +359,7 @@
         <h2>Create Parcel</h2>
         <p class="admin-help">Fast mode: enter token once, choose status, optionally assign customer email, then generate.</p>
 
-        <div class="admin-form-grid">
+      <div class="admin-form-grid">
           <div class="admin-field">
             <label for="quickToken">Admin Token*</label>
             <input id="quickToken" type="password" autocomplete="off" placeholder="Enter ADMIN_API_TOKEN">
@@ -406,6 +406,17 @@
         </div>
 
         <div class="admin-message" id="quickMessage"></div>
+      </div>
+
+      <div class="admin-panel" style="margin-top:20px;">
+        <h2>Support Chat</h2>
+        <p class="admin-help">View and reply to customer messages tied to the selected tracking number.</p>
+        <div id="supportMessages" class="support-messages" style="max-height:220px;"></div>
+        <div class="support-input-row" style="margin-top:10px;">
+          <input id="supportReply" type="text" placeholder="Type a reply..." />
+          <button type="button" class="admin-btn" id="supportSendBtn">Send</button>
+        </div>
+        <div class="admin-message" id="supportMessage"></div>
       </div>
 
       <div class="admin-layout">
@@ -619,6 +630,10 @@
       quickLng: document.getElementById("quickLng"),
       quickCreateBtn: document.getElementById("quickCreateBtn"),
       quickUpdateBtn: document.getElementById("quickUpdateBtn"),
+      supportMessages: document.getElementById("supportMessages"),
+      supportReply: document.getElementById("supportReply"),
+      supportSendBtn: document.getElementById("supportSendBtn"),
+      supportMessage: document.getElementById("supportMessage"),
       deleteShipment: document.getElementById("deleteShipment"),
       clearForm: document.getElementById("clearForm"),
       generateTrackingNumber: document.getElementById("generateTrackingNumber"),
@@ -673,6 +688,10 @@
 
       if (elements.quickUpdateBtn) {
         elements.quickUpdateBtn.addEventListener("click", quickUpdateLocation);
+      }
+
+      if (elements.supportSendBtn && elements.supportReply) {
+        elements.supportSendBtn.addEventListener("click", sendSupportReply);
       }
 
       if (elements.generateTrackingNumber) {
@@ -952,6 +971,9 @@
         state.shipments = Array.isArray(payload.shipments) ? payload.shipments.slice(0, 20) : [];
         renderShipments();
         setMessage(elements.listMessage, `${state.shipments.length} shipment(s)`, "success");
+        if (state.selectedTracking) {
+          loadSupportMessages(state.selectedTracking);
+        }
       } catch (error) {
         state.shipments = [];
         renderShipments();
@@ -1017,6 +1039,8 @@
       elements.estimatedDelivery.value = toDatetimeLocal(shipment.estimatedDelivery);
       elements.eventTitle.value = "";
       elements.eventLocation.value = "";
+      if (elements.supportMessages) loadSupportMessages(shipment.trackingNumber);
+      if (elements.supportReply) elements.supportReply.value = "";
 
       const pod = shipment.proofOfDelivery || {};
       elements.podDeliveredAt.value = toDatetimeLocal(pod.deliveredAt);
@@ -1038,6 +1062,8 @@
       if (elements.quickLocation) elements.quickLocation.value = "";
       if (elements.quickLat) elements.quickLat.value = "";
       if (elements.quickLng) elements.quickLng.value = "";
+      if (elements.supportMessages) elements.supportMessages.innerHTML = "";
+      if (elements.supportReply) elements.supportReply.value = "";
       renderShipments();
       setMessage(elements.formMessage, "", "");
     }
@@ -1244,6 +1270,52 @@
       if (!text) return;
       target.classList.add("show");
       if (type) target.classList.add(type);
+    }
+
+    // ---------- Support chat (admin) -----------
+    async function loadSupportMessages(trackingNumber) {
+      if (!elements.supportMessages || !trackingNumber) return;
+      try {
+        const payload = await fetchJson(`/api/support?tracking=${encodeURIComponent(trackingNumber)}`, { method: "GET" });
+        const msgs = payload.messages || [];
+        elements.supportMessages.innerHTML = msgs.map(msg => `
+          <div class="chat-row ${msg.from === "admin" ? "chat-admin" : "chat-user"}">
+            <div class="chat-meta">${msg.from === "admin" ? "You" : "Customer"} · ${escapeHtml(new Date(msg.timestamp).toLocaleTimeString())}</div>
+            <div class="chat-bubble">${escapeHtml(msg.body)}</div>
+          </div>
+        `).join("") || "<div class=\"chat-empty\">No messages yet</div>";
+        elements.supportMessages.scrollTop = elements.supportMessages.scrollHeight;
+      } catch (_error) {
+        // silent
+      }
+    }
+
+    async function sendSupportReply() {
+      if (!state.selectedTracking || !elements.supportReply) return;
+      const token = elements.adminToken.value.trim();
+      if (!token) {
+        setMessage(elements.supportMessage, "Enter admin token to reply.", "error");
+        return;
+      }
+
+      const text = elements.supportReply.value.trim();
+      if (!text) return;
+      elements.supportReply.value = "";
+
+      try {
+        await fetchJson("/api/support", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-token": token
+          },
+          body: JSON.stringify({ trackingNumber: state.selectedTracking, message: text, from: "admin" })
+        });
+        setMessage(elements.supportMessage, "Reply sent", "success");
+        loadSupportMessages(state.selectedTracking);
+      } catch (error) {
+        setMessage(elements.supportMessage, error.message || "Failed to send", "error");
+      }
     }
 
     async function fetchJson(url, options) {

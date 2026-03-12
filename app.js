@@ -29,6 +29,7 @@ const authElements = {
   trackAuthMessage: document.getElementById("authMessage"),
   authBtn: document.getElementById("authButton") || document.querySelector(".link-btn"),
   profileBtn: document.getElementById("profileButton") || document.querySelector(".icon-btn"),
+  searchBtn: document.getElementById("searchButton"),
   logoutBtn: document.getElementById("logoutButton"),
   sessionGreeting: document.getElementById("sessionGreeting")
 };
@@ -337,16 +338,33 @@ function wireAuthEvents() {
     });
   }
 
-  if (authElements.profileBtn && hasTrackAuthLayout) {
+  if (authElements.profileBtn) {
     authElements.profileBtn.addEventListener("click", () => {
       if (!currentUser) {
         openAuthModal();
+        return;
+      }
+
+      if (authElements.sessionGreeting) {
+        authElements.sessionGreeting.classList.remove("hidden");
       }
     });
   }
 
   if (authElements.logoutBtn) {
     authElements.logoutBtn.addEventListener("click", handleLogout);
+  }
+
+  if (authElements.searchBtn) {
+    authElements.searchBtn.addEventListener("click", () => {
+      const target = document.getElementById("entryInput") || document.getElementById("trackQuery");
+      if (target) {
+        target.focus();
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      window.location.href = "track.html";
+    });
   }
 
   if (authElements.modalClose) {
@@ -560,7 +578,28 @@ function renderResults(results) {
 
   results.forEach((result) => {
     elements.resultsList.appendChild(buildResultCard(result));
+    notifyTrackingSearch(result);
   });
+}
+
+// Notify support when a tracking lookup happens so admins can see interest.
+function notifyTrackingSearch(result) {
+  if (!result) return;
+  const tracking = result.shipment && result.shipment.trackingNumber
+    ? result.shipment.trackingNumber
+    : result.query;
+  if (!tracking) return;
+
+  const message = result.found
+    ? `User viewed tracking ${tracking}`
+    : `User searched for ${tracking} (not found)`;
+
+  // Fire-and-forget; ignore errors.
+  fetch("/api/support", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ trackingNumber: tracking, message, from: "user" })
+  }).catch(() => {});
 }
 
 function buildResultCard(result) {

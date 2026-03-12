@@ -7,6 +7,7 @@ const handlers = {
   "track": require("../lib/api/track"),
   "shipments": require("../lib/api/shipments"),
   "shipments/request": require("../lib/api/shipments/request"),
+  "support": require("../lib/api/support"),
 
   "admin/stats": require("../lib/api/admin/stats"),
   "admin/upsert": require("../lib/api/admin/upsert"),
