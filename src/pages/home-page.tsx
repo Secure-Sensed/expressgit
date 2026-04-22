@@ -1,18 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, LifeBuoy, MapPinned, Radar, ShieldCheck, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowRight, Calculator, CircleDollarSign, HelpCircle, LocateFixed, PackageSearch, PackagePlus, UserRound } from "lucide-react";
 
-import { MetricCard } from "@/components/metric-card";
-import { StatusBadge } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import * as api from "@/lib/api";
-import { formatDateTime, formatRelativeTime } from "@/lib/utils";
-import type { Shipment, Stats } from "@/types";
+import type { Stats } from "@/types";
 
-const defaults: Stats = {
+type Mode = "rates" | "track" | "ship";
+
+const defaultStats: Stats = {
   total: 0,
   inTransit: 0,
   delivered: 0,
@@ -21,249 +16,161 @@ const defaults: Stats = {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats>(defaults);
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [mode, setMode] = useState<Mode>("track");
   const [query, setQuery] = useState("");
+  const [stats, setStats] = useState<Stats>(defaultStats);
 
   useEffect(() => {
-    void loadOverview();
+    void loadStats();
   }, []);
 
-  async function loadOverview() {
+  async function loadStats() {
     try {
-      const [statsResponse, shipmentsResponse] = await Promise.all([api.getStats(), api.getShipments()]);
-      setStats(statsResponse);
-      setShipments((shipmentsResponse.shipments || []).slice(0, 8));
+      const next = await api.getStats();
+      setStats(next);
     } catch (_error) {
-      setStats(defaults);
-      setShipments([]);
+      setStats(defaultStats);
     }
   }
 
-  const latestEvents = shipments
-    .flatMap((shipment) =>
-      shipment.events.slice(0, 1).map((event) => ({
-        trackingNumber: shipment.trackingNumber,
-        status: shipment.status,
-        location: event.location,
-        title: event.title,
-        timestamp: event.timestamp
-      }))
-    )
-    .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
-    .slice(0, 4);
-
-  function submitHeroSearch(event: React.FormEvent) {
+  function submit(event: React.FormEvent) {
     event.preventDefault();
-    const trimmed = query.trim();
-    if (!trimmed) return;
-    navigate(`/track?q=${encodeURIComponent(trimmed)}`);
+
+    if (mode === "track") {
+      const trimmed = query.trim();
+      if (!trimmed) return;
+      navigate(`/track?q=${encodeURIComponent(trimmed)}`);
+      return;
+    }
+
+    if (mode === "ship") {
+      navigate("/track");
+      return;
+    }
+
+    navigate("/operations");
   }
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-6 xl:grid-cols-[1.25fr_0.85fr]">
-        <Card className="overflow-hidden border-white/12">
-          <CardContent className="relative overflow-hidden px-6 py-8 sm:px-8 sm:py-10">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,127,41,0.22),transparent_25%),radial-gradient(circle_at_80%_0%,rgba(52,211,255,0.18),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_62%)]" />
-            <div className="relative space-y-8">
-              <div className="space-y-4">
-                <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-xs uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]">
-                  <Sparkles className="h-4 w-4 text-[color:var(--accent)]" />
-                  Advanced dispatch portal
-                </p>
-                <div className="max-w-3xl space-y-4">
-                  <h1 className="font-[family-name:var(--font-display)] text-4xl leading-none sm:text-5xl lg:text-6xl">
-                    One control surface for tracking, support, and live logistics.
-                  </h1>
-                  <p className="max-w-2xl text-base leading-7 text-[color:var(--muted-foreground)] sm:text-lg">
-                    Search parcels instantly, inspect their latest scan history, monitor active lanes on a map, and move
-                    operators through shipment updates without making them fight the interface.
-                  </p>
-                </div>
-              </div>
-
-              <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={submitHeroSearch}>
-                <Input
-                  placeholder="Enter a tracking number, reference, or TCN"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-                <Button size="lg" type="submit">
-                  Search shipment
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </form>
-
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <MetricCard accent="orange" label="Active parcels" value={stats.total} detail="Current records available to track." />
-                <MetricCard accent="blue" label="In transit" value={stats.inTransit} detail="Live shipments moving through the network." />
-                <MetricCard accent="green" label="Delivered" value={stats.delivered} detail="Proof-ready shipments completed in system." />
-                <MetricCard accent="rose" label="Customers" value={stats.customers} detail="Distinct customers assigned to shipments." />
-              </div>
+    <div className="space-y-0">
+      <section className="mx-auto max-w-[1220px] px-4 pb-14 pt-10">
+        <div className="rounded-none bg-[#ececec] px-4 py-16 md:px-8 md:py-20">
+          <div className="mx-auto max-w-[760px]">
+            <div className="grid grid-cols-3 overflow-hidden border border-[#e1e1e1] bg-[#efefef]">
+              <ModeButton
+                active={mode === "rates"}
+                icon={Calculator}
+                label="RATE & TRANSIT TIMES"
+                onClick={() => setMode("rates")}
+              />
+              <ModeButton
+                active={mode === "track"}
+                icon={PackageSearch}
+                label="TRACK"
+                onClick={() => setMode("track")}
+              />
+              <ModeButton
+                active={mode === "ship"}
+                icon={PackagePlus}
+                label="SHIP"
+                onClick={() => setMode("ship")}
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Network pulse</CardTitle>
-              <CardDescription>Recent shipment activity pulled from the same API used by the tracking and admin views.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {shipments.slice(0, 4).map((shipment) => (
-                <Link
-                  key={shipment.trackingNumber}
-                  className="flex items-start justify-between gap-4 rounded-[24px] border border-white/8 bg-white/4 px-4 py-4 transition-colors hover:bg-white/7"
-                  to={`/track?q=${encodeURIComponent(shipment.trackingNumber)}`}
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">{shipment.trackingNumber}</p>
-                    <p className="text-lg font-semibold">{shipment.lastLocation}</p>
-                    <p className="text-sm text-[color:var(--muted-foreground)]">
-                      ETA {formatDateTime(shipment.estimatedDelivery)}
-                    </p>
-                  </div>
-                  <StatusBadge status={shipment.status} />
-                </Link>
-              ))}
-              {!shipments.length ? <p className="text-sm text-[color:var(--muted-foreground)]">No shipment data available yet.</p> : null}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Operator shortcuts</CardTitle>
-              <CardDescription>Jump directly to the view that fits the task instead of drilling through generic pages.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              <ShortcutCard
-                icon={Radar}
-                title="Tracking workspace"
-                body="Search by tracking, reference, TCN, or POD request and open a support thread from the result."
-                to="/track"
+            <form className="mt-10 grid gap-3 sm:grid-cols-[1fr_200px]" onSubmit={submit}>
+              <input
+                className="h-[68px] border border-[#9b9b9b] bg-white px-4 text-lg font-normal italic text-[#777] outline-none focus:border-[color:var(--fedex-purple)] md:text-xl"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={mode === "track" ? "TRACKING ID" : mode === "ship" ? "SHIPMENT REFERENCE" : "DESTINATION"}
+                value={query}
               />
-              <ShortcutCard
-                icon={MapPinned}
-                title="Live operations"
-                body="Inspect moving shipments and vehicle positions on a shared map with refresh controls."
-                to="/operations"
-              />
-              <ShortcutCard
-                icon={ShieldCheck}
-                title="Admin console"
-                body="Create parcels fast, update locations, review support inbox activity, and edit shipment details."
-                to="/admin"
-              />
-            </CardContent>
-          </Card>
+              <button
+                className="inline-flex h-[68px] items-center justify-center gap-3 bg-[color:var(--fedex-orange)] px-6 text-lg font-semibold uppercase tracking-[0.02em] text-white transition-opacity hover:opacity-95 md:text-2xl"
+                type="submit"
+              >
+                {mode === "track" ? "Track" : mode === "ship" ? "Ship" : "Check"}
+                <ArrowRight className="h-5 w-5" />
+              </button>
+            </form>
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Why this redesign is different</CardTitle>
-            <CardDescription>The goal was not cosmetic parity. The goal was reducing operator friction.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <FeatureBullet
-              icon={Radar}
-              title="Fewer dead ends"
-              body="Shipment tracking, support, and admin actions live in one routed client instead of isolated static pages."
-            />
-            <FeatureBullet
-              icon={MapPinned}
-              title="Faster situational awareness"
-              body="Operations now have a dedicated view for shipment geography and lane health instead of text-only lists."
-            />
-            <FeatureBullet
-              icon={LifeBuoy}
-              title="Support tied to context"
-              body="Customer messages stay connected to the shipment thread they belong to, which removes lookup churn."
-            />
-          </CardContent>
-        </Card>
+      <section className="mx-auto grid w-full max-w-[1220px] grid-cols-1 px-4 md:grid-cols-[1fr_320px]">
+        <div className="flex min-h-[132px] items-center gap-5 bg-[color:var(--fedex-purple)] px-8 text-white">
+          <div className="hidden h-16 w-16 items-center justify-center rounded-full border-2 border-white/80 md:flex">
+            <PackageSearch className="h-8 w-8" />
+          </div>
+          <div>
+            <p className="text-2xl font-semibold leading-tight md:text-[38px]">Sign up now to enjoy personalized shipping rates!</p>
+            <p className="mt-2 text-base text-white/85 md:text-2xl">
+              Benefit from our services and solutions designed to meet all of your shipping needs.
+            </p>
+          </div>
+        </div>
+        <div className="flex min-h-[132px] items-center justify-center bg-[#ececec] px-4">
+          <button className="h-[62px] w-full max-w-[260px] rounded-full border-[3px] border-[color:var(--fedex-purple)] bg-transparent px-4 text-sm font-semibold uppercase tracking-[0.04em] text-[color:var(--fedex-purple)] transition-colors hover:bg-[#f6f2ff] md:text-lg">
+            Open an account
+          </button>
+        </div>
+      </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Latest movement log</CardTitle>
-            <CardDescription>Recent scans and status changes across the current shipment set.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {latestEvents.map((item, index) => (
-              <div key={`${item.trackingNumber}-${item.timestamp}`}>
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <p className="font-semibold">{item.title}</p>
-                      <StatusBadge status={item.status} />
-                    </div>
-                    <p className="text-sm text-[color:var(--muted-foreground)]">
-                      {item.trackingNumber} · {item.location}
-                    </p>
-                  </div>
-                  <div className="text-sm text-[color:var(--muted-foreground)]">
-                    <p>{formatDateTime(item.timestamp)}</p>
-                    <p>{formatRelativeTime(item.timestamp)}</p>
-                  </div>
-                </div>
-                {index < latestEvents.length - 1 ? <Separator className="mt-4" /> : null}
-              </div>
-            ))}
-            {!latestEvents.length ? <p className="text-sm text-[color:var(--muted-foreground)]">No recent events available.</p> : null}
-          </CardContent>
-        </Card>
+      <section className="mx-auto max-w-[1220px] px-4 pb-10 pt-14 text-center">
+        <h2 className="text-4xl font-normal text-[color:var(--fedex-purple)] md:text-6xl">Manage your shipments</h2>
+        <div className="mt-10 grid gap-8 md:grid-cols-4">
+          <ManageCard icon={UserRound} label="Schedule pickup" value={`${stats.customers} customers`} />
+          <ManageCard icon={LocateFixed} label="Find locations" value={`${stats.inTransit} in transit`} />
+          <ManageCard icon={CircleDollarSign} label="Fuel surcharge" value={`${stats.total} active`} />
+          <ManageCard icon={HelpCircle} label="FAQs" value={`${stats.delivered} delivered`} />
+        </div>
       </section>
     </div>
   );
 }
 
-function ShortcutCard({
+function ModeButton({
+  active,
   icon: Icon,
-  title,
-  body,
-  to
+  label,
+  onClick
 }: {
-  icon: typeof Radar;
-  title: string;
-  body: string;
-  to: string;
+  active: boolean;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick: () => void;
 }) {
   return (
-    <Link className="rounded-[24px] border border-white/8 bg-white/4 p-4 transition-colors hover:bg-white/7" to={to}>
-      <div className="flex items-start gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/8">
-          <Icon className="h-5 w-5 text-[color:var(--accent)]" />
-        </div>
-        <div className="space-y-1">
-          <p className="font-semibold">{title}</p>
-          <p className="text-sm leading-6 text-[color:var(--muted-foreground)]">{body}</p>
-        </div>
-      </div>
-    </Link>
+    <button
+      className={`flex min-h-[184px] flex-col items-center justify-center gap-3 px-3 text-center text-xs font-semibold tracking-[0.02em] transition-colors sm:text-sm md:text-[32px] ${
+        active
+          ? "bg-[color:var(--fedex-purple)] text-white"
+          : "bg-[#efefef] text-[#2f2f2f] hover:bg-[#e6e6e6]"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      <Icon className="h-10 w-10" />
+      <span>{label}</span>
+    </button>
   );
 }
 
-function FeatureBullet({
+function ManageCard({
   icon: Icon,
-  title,
-  body
+  label,
+  value
 }: {
-  icon: typeof Radar;
-  title: string;
-  body: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
 }) {
   return (
-    <div className="flex items-start gap-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-        <Icon className="h-4 w-4 text-[color:var(--accent)]" />
+    <div className="space-y-4">
+      <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[color:var(--fedex-purple)] bg-white text-[color:var(--fedex-purple)]">
+        <Icon className="h-12 w-12" />
       </div>
-      <div className="space-y-1">
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm leading-6 text-[color:var(--muted-foreground)]">{body}</p>
-      </div>
+      <p className="text-lg font-semibold uppercase tracking-[0.04em] text-[#0071bc] md:text-[34px]">{label}</p>
+      <p className="text-sm text-[color:var(--muted-foreground)] md:text-[27px]">{value}</p>
     </div>
   );
 }

@@ -5,7 +5,6 @@ import {
   PackagePlus,
   RefreshCcw,
   Send,
-  ShieldAlert,
   Trash2,
   UserX
 } from "lucide-react";
@@ -38,32 +37,24 @@ const presets = {
     origin: "Memphis, TN",
     destination: "Atlanta, GA",
     lastLocation: "Memphis, TN",
-    currentLat: "35.1495",
-    currentLng: "-90.0490",
     daysToDelivery: 3
   },
   "In Transit": {
     origin: "Indianapolis, IN",
     destination: "Newark, NJ",
     lastLocation: "Columbus, OH",
-    currentLat: "39.9612",
-    currentLng: "-82.9988",
     daysToDelivery: 1
   },
   "Out for Delivery": {
     origin: "Dallas, TX",
     destination: "Austin, TX",
     lastLocation: "Austin, TX",
-    currentLat: "30.2672",
-    currentLng: "-97.7431",
     daysToDelivery: 0
   },
   Delivered: {
     origin: "Indianapolis, IN",
     destination: "Atlanta, GA",
     lastLocation: "Atlanta, GA",
-    currentLat: "33.7490",
-    currentLng: "-84.3880",
     daysToDelivery: 0,
     receivedBy: "Front Desk"
   },
@@ -71,8 +62,6 @@ const presets = {
     origin: "Phoenix, AZ",
     destination: "Newark, NJ",
     lastLocation: "St. Louis, MO",
-    currentLat: "38.6270",
-    currentLng: "-90.1994",
     daysToDelivery: 2
   }
 } as const;
@@ -81,16 +70,18 @@ type PresetValue = {
   origin: string;
   destination: string;
   lastLocation: string;
-  currentLat: string;
-  currentLng: string;
   daysToDelivery: number;
   receivedBy?: string;
 };
 
 type Draft = ReturnType<typeof createDraftFromShipment>;
+type NotificationState = {
+  sent: boolean;
+  skipped?: string;
+  error?: string;
+};
 
 export function AdminPage() {
-  const [adminToken, setAdminToken] = useState(() => window.localStorage.getItem("adminToken") || "");
   const [stats, setStats] = useState<Stats>(statsFallback);
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [threads, setThreads] = useState<SupportThread[]>([]);
@@ -105,8 +96,6 @@ export function AdminPage() {
   const [quickCustomerEmail, setQuickCustomerEmail] = useState("");
   const [quickTrackingNumber, setQuickTrackingNumber] = useState("");
   const [quickLocation, setQuickLocation] = useState("");
-  const [quickLat, setQuickLat] = useState("");
-  const [quickLng, setQuickLng] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -118,22 +107,11 @@ export function AdminPage() {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem("adminToken", adminToken);
-    if (adminToken) {
-      void loadThreads(adminToken);
-    } else {
-      setThreads([]);
-    }
-  }, [adminToken]);
-
-  useEffect(() => {
     const selected = shipments.find((shipment) => shipment.trackingNumber === selectedTracking);
     if (selected) {
       setDraft(createDraftFromShipment(selected));
       setQuickTrackingNumber(selected.trackingNumber);
       setQuickLocation(selected.lastLocation || "");
-      setQuickLat(selected.currentLat != null ? String(selected.currentLat) : "");
-      setQuickLng(selected.currentLng != null ? String(selected.currentLng) : "");
       void loadSupportMessages(selected.trackingNumber);
     } else {
       setSupportMessages([]);
@@ -159,9 +137,7 @@ export function AdminPage() {
         setSelectedTracking(shipmentsResponse.shipments[0].trackingNumber);
       }
 
-      if (adminToken) {
-        await loadThreads(adminToken);
-      }
+      await loadThreads();
     } catch (error) {
       if (initial) {
         toast.error(error instanceof Error ? error.message : "Unable to load admin data.");
@@ -173,9 +149,9 @@ export function AdminPage() {
     }
   }
 
-  async function loadThreads(token: string) {
+  async function loadThreads() {
     try {
-      const response = await api.getSupportThreads(token);
+      const response = await api.getSupportThreads();
       setThreads(response.threads || []);
     } catch (_error) {
       setThreads([]);
@@ -192,11 +168,6 @@ export function AdminPage() {
   }
 
   async function createQuickShipment() {
-    if (!adminToken.trim()) {
-      toast.error("Enter the admin token first.");
-      return;
-    }
-
     setQuickWorking(true);
     try {
       const preset = presets[quickStatus] as PresetValue;
@@ -210,8 +181,6 @@ export function AdminPage() {
         origin: preset.origin,
         destination: preset.destination,
         lastLocation: preset.lastLocation,
-        currentLat: Number(preset.currentLat),
-        currentLng: Number(preset.currentLng),
         customerEmail: quickCustomerEmail.trim().toLowerCase() || undefined,
         customerName: quickCustomerEmail ? quickCustomerEmail.split("@")[0].replace(/[._-]+/g, " ") : undefined,
         estimatedDelivery: estimatedDelivery.toISOString(),
@@ -232,12 +201,11 @@ export function AdminPage() {
         };
       }
 
-      await api.upsertShipment(shipment, adminToken.trim());
+      const response = await api.upsertShipment(shipment);
       toast.success(`Created shipment ${trackingNumber}`);
+      reportNotification(response.notification);
       setQuickTrackingNumber(trackingNumber);
       setQuickLocation(preset.lastLocation);
-      setQuickLat(preset.currentLat);
-      setQuickLng(preset.currentLng);
       await loadDashboard();
       setSelectedTracking(trackingNumber);
     } catch (error) {
@@ -248,11 +216,6 @@ export function AdminPage() {
   }
 
   async function updateQuickLocation() {
-    if (!adminToken.trim()) {
-      toast.error("Enter the admin token first.");
-      return;
-    }
-
     if (!quickTrackingNumber.trim() || !quickLocation.trim()) {
       toast.error("Tracking number and current location are required.");
       return;
@@ -260,16 +223,14 @@ export function AdminPage() {
 
     setQuickWorking(true);
     try {
-      await api.updateShipmentLocation(
+      const response = await api.updateShipmentLocation(
         {
           trackingNumber: quickTrackingNumber.trim().toUpperCase(),
-          lastLocation: quickLocation.trim(),
-          currentLat: quickLat ? Number(quickLat) : undefined,
-          currentLng: quickLng ? Number(quickLng) : undefined
-        },
-        adminToken.trim()
+          lastLocation: quickLocation.trim()
+        }
       );
       toast.success("Live location updated.");
+      reportNotification(response.notification);
       await loadDashboard();
       setSelectedTracking(quickTrackingNumber.trim().toUpperCase());
     } catch (error) {
@@ -281,11 +242,6 @@ export function AdminPage() {
 
   async function saveShipment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!adminToken.trim()) {
-      toast.error("Enter the admin token first.");
-      return;
-    }
-
     setSaving(true);
     try {
       const payload: Partial<Shipment> = {
@@ -299,12 +255,6 @@ export function AdminPage() {
         customerEmail: draft.customerEmail || undefined,
         customerName: draft.customerName || undefined,
         estimatedDelivery: draft.estimatedDelivery ? new Date(draft.estimatedDelivery).toISOString() : undefined,
-        currentLat: draft.currentLat ? Number(draft.currentLat) : undefined,
-        currentLng: draft.currentLng ? Number(draft.currentLng) : undefined,
-        originLat: draft.originLat ? Number(draft.originLat) : undefined,
-        originLng: draft.originLng ? Number(draft.originLng) : undefined,
-        destinationLat: draft.destinationLat ? Number(draft.destinationLat) : undefined,
-        destinationLng: draft.destinationLng ? Number(draft.destinationLng) : undefined,
         events: draft.eventTitle
           ? [
               {
@@ -324,8 +274,9 @@ export function AdminPage() {
             : undefined
       };
 
-      const response = await api.upsertShipment(payload, adminToken.trim());
+      const response = await api.upsertShipment(payload);
       toast.success(`Shipment ${response.action}.`);
+      reportNotification(response.notification);
       await loadDashboard();
       setSelectedTracking(response.shipment.trackingNumber);
     } catch (error) {
@@ -336,8 +287,8 @@ export function AdminPage() {
   }
 
   async function removeShipment() {
-    if (!adminToken.trim() || !selectedTracking) {
-      toast.error("Select a shipment and enter the admin token first.");
+    if (!selectedTracking) {
+      toast.error("Select a shipment first.");
       return;
     }
 
@@ -347,7 +298,7 @@ export function AdminPage() {
 
     setDeleting(true);
     try {
-      await api.deleteShipment(selectedTracking, adminToken.trim());
+      await api.deleteShipment(selectedTracking);
       toast.success(`Shipment ${selectedTracking} deleted.`);
       setSelectedTracking("");
       setDraft(createDraftFromShipment());
@@ -360,8 +311,8 @@ export function AdminPage() {
   }
 
   async function replyToSupport() {
-    if (!adminToken.trim() || !selectedTracking || !supportDraft.trim()) {
-      toast.error("Admin token, selected shipment, and a message are required.");
+    if (!selectedTracking || !supportDraft.trim()) {
+      toast.error("Select a shipment and enter a message.");
       return;
     }
 
@@ -372,11 +323,10 @@ export function AdminPage() {
           trackingNumber: selectedTracking,
           message: supportDraft.trim(),
           from: "admin"
-        },
-        adminToken.trim()
+        }
       );
       setSupportDraft("");
-      await Promise.all([loadSupportMessages(selectedTracking), loadThreads(adminToken.trim())]);
+      await Promise.all([loadSupportMessages(selectedTracking), loadThreads()]);
       toast.success("Reply sent.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to send support reply.");
@@ -418,6 +368,25 @@ export function AdminPage() {
     return matchesSearch && matchesStatus;
   });
 
+  function reportNotification(state?: NotificationState) {
+    if (!state) return;
+    if (state.sent) {
+      toast.success("Receiver email notification sent.");
+      return;
+    }
+    if (state.error) {
+      toast.error(`Email notification failed: ${state.error}`);
+      return;
+    }
+    if (state.skipped === "missing-recipient") {
+      toast.message("No receiver email found for this shipment.");
+      return;
+    }
+    if (state.skipped === "email-not-configured") {
+      toast.message("Email not configured. Set RESEND_API_KEY and MAIL_FROM to enable notifications.");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -432,33 +401,17 @@ export function AdminPage() {
           <Card>
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <CardTitle>Console access</CardTitle>
-                <CardDescription>The write APIs still require `ADMIN_API_TOKEN`. Store it here once for this browser.</CardDescription>
+                <CardTitle>Admin console</CardTitle>
+                <CardDescription>Create, update, and monitor shipments in one place. Receiver notifications are sent on create/update.</CardDescription>
               </div>
               <Button variant="outline" onClick={() => void loadDashboard(true)} disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
                 Refresh data
               </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="admin-token">Admin token</Label>
-                <Input
-                  id="admin-token"
-                  type="password"
-                  placeholder="Enter ADMIN_API_TOKEN"
-                  value={adminToken}
-                  onChange={(event) => setAdminToken(event.target.value)}
-                />
-              </div>
-              <div className="rounded-[24px] border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm leading-6 text-amber-100">
-                <div className="flex items-start gap-3">
-                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>
-                    Read endpoints load without the token, but create, update, delete, and admin support replies will fail
-                    until it is set.
-                  </p>
-                </div>
+            <CardContent>
+              <div className="rounded-[24px] border border-[#d7c8ff] bg-[#f1edf9] px-4 py-3 text-sm leading-6 text-[#5b2b95]">
+                Shipment changes are persisted through the backend store (Supabase when configured) and remain visible in tracking, operations, and support views.
               </div>
             </CardContent>
           </Card>
@@ -667,7 +620,7 @@ export function AdminPage() {
           <Card>
             <CardHeader>
               <CardTitle>Live location update</CardTitle>
-              <CardDescription>Use the selected shipment or type another tracking number and push a new current position.</CardDescription>
+              <CardDescription>Use the selected shipment or type another tracking number and push a new scan location.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
@@ -687,14 +640,6 @@ export function AdminPage() {
                   value={quickLocation}
                   onChange={(event) => setQuickLocation(event.target.value)}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quick-lat">Latitude</Label>
-                <Input id="quick-lat" value={quickLat} onChange={(event) => setQuickLat(event.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quick-lng">Longitude</Label>
-                <Input id="quick-lng" value={quickLng} onChange={(event) => setQuickLng(event.target.value)} />
               </div>
               <div className="md:col-span-2">
                 <Button className="w-full" variant="secondary" onClick={() => void updateQuickLocation()} disabled={quickWorking}>
@@ -761,30 +706,6 @@ export function AdminPage() {
                       type="datetime-local"
                       value={draft.estimatedDelivery}
                       onChange={(event) => setDraft((current) => ({ ...current, estimatedDelivery: event.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Current latitude">
-                    <Input value={draft.currentLat} onChange={(event) => setDraft((current) => ({ ...current, currentLat: event.target.value }))} />
-                  </Field>
-                  <Field label="Current longitude">
-                    <Input value={draft.currentLng} onChange={(event) => setDraft((current) => ({ ...current, currentLng: event.target.value }))} />
-                  </Field>
-                  <Field label="Origin latitude">
-                    <Input value={draft.originLat} onChange={(event) => setDraft((current) => ({ ...current, originLat: event.target.value }))} />
-                  </Field>
-                  <Field label="Origin longitude">
-                    <Input value={draft.originLng} onChange={(event) => setDraft((current) => ({ ...current, originLng: event.target.value }))} />
-                  </Field>
-                  <Field label="Destination latitude">
-                    <Input
-                      value={draft.destinationLat}
-                      onChange={(event) => setDraft((current) => ({ ...current, destinationLat: event.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Destination longitude">
-                    <Input
-                      value={draft.destinationLng}
-                      onChange={(event) => setDraft((current) => ({ ...current, destinationLng: event.target.value }))}
                     />
                   </Field>
                 </div>
@@ -916,12 +837,6 @@ function createDraftFromShipment(shipment?: Shipment | null) {
     customerEmail: shipment?.customerEmail || "",
     customerName: shipment?.customerName || "",
     estimatedDelivery: shipment?.estimatedDelivery ? toDateTimeLocal(shipment.estimatedDelivery) : "",
-    currentLat: shipment?.currentLat != null ? String(shipment.currentLat) : "",
-    currentLng: shipment?.currentLng != null ? String(shipment.currentLng) : "",
-    originLat: shipment?.originLat != null ? String(shipment.originLat) : "",
-    originLng: shipment?.originLng != null ? String(shipment.originLng) : "",
-    destinationLat: shipment?.destinationLat != null ? String(shipment.destinationLat) : "",
-    destinationLng: shipment?.destinationLng != null ? String(shipment.destinationLng) : "",
     eventTitle: latestEvent?.title || "",
     eventLocation: latestEvent?.location || shipment?.lastLocation || "",
     eventDetails: latestEvent?.details || "",

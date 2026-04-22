@@ -9,6 +9,12 @@ import type {
   Vehicle
 } from "@/types";
 
+interface ShipmentNotification {
+  sent: boolean;
+  skipped?: string;
+  error?: string;
+}
+
 export async function fetchJson<T>(url: string, options: RequestInit = {}) {
   const response = await fetch(url, {
     credentials: "same-origin",
@@ -80,25 +86,15 @@ export function getSupportMessages(trackingNumber: string) {
   return fetchJson<{ messages: SupportMessage[] }>(`/api/support?tracking=${encodeURIComponent(trackingNumber)}`);
 }
 
-export function getSupportThreads(adminToken: string) {
-  return fetchJson<{ threads: SupportThread[] }>("/api/support?all=1", {
-    headers: {
-      "x-admin-token": adminToken
-    }
-  });
+export function getSupportThreads() {
+  return fetchJson<{ threads: SupportThread[] }>("/api/support?all=1");
 }
 
 export function sendSupportMessage(
-  payload: { trackingNumber: string; message: string; from: "admin" | "user" },
-  adminToken?: string
+  payload: { trackingNumber: string; message: string; from: "admin" | "user" }
 ) {
   return fetchJson<{ message: SupportMessage }>("/api/support", {
     method: "POST",
-    headers: adminToken
-      ? {
-          "x-admin-token": adminToken
-        }
-      : undefined,
     body: JSON.stringify(payload)
   });
 }
@@ -107,35 +103,25 @@ export function getVehicles() {
   return fetchJson<{ vehicles: Vehicle[] }>("/api/vehicles");
 }
 
-export function upsertShipment(shipment: Partial<Shipment>, adminToken: string) {
-  return fetchJson<{ action: string; shipment: Shipment }>("/api/admin/upsert", {
+export function upsertShipment(shipment: Partial<Shipment>) {
+  return fetchJson<{ action: string; shipment: Shipment; notification?: ShipmentNotification }>("/api/admin/upsert", {
     method: "POST",
-    headers: {
-      "x-admin-token": adminToken
-    },
     body: JSON.stringify({ shipment })
   });
 }
 
-export function deleteShipment(trackingNumber: string, adminToken: string) {
+export function deleteShipment(trackingNumber: string) {
   return fetchJson<{ action: string; trackingNumber: string }>("/api/admin/delete", {
     method: "POST",
-    headers: {
-      "x-admin-token": adminToken
-    },
     body: JSON.stringify({ trackingNumber })
   });
 }
 
 export function updateShipmentLocation(
-  payload: { trackingNumber: string; lastLocation: string; currentLat?: number | null; currentLng?: number | null },
-  adminToken: string
+  payload: { trackingNumber: string; lastLocation: string }
 ) {
-  return fetchJson<{ action: string; shipment: Shipment }>("/api/admin/update-location", {
+  return fetchJson<{ action: string; shipment: Shipment; notification?: ShipmentNotification }>("/api/admin/update-location", {
     method: "POST",
-    headers: {
-      "x-admin-token": adminToken
-    },
     body: JSON.stringify(payload)
   });
 }

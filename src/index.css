@@ -2,28 +2,32 @@
 @import "leaflet/dist/leaflet.css";
 
 @theme {
-  --font-sans: "IBM Plex Sans", sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: "FedEx Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "FedEx Sans", "Helvetica Neue", Arial, sans-serif;
 }
 
 :root {
-  --background: #0b1120;
-  --foreground: #f4f7fb;
-  --ink-strong: #0f1728;
-  --panel: rgba(15, 24, 42, 0.78);
-  --panel-subtle: rgba(19, 31, 53, 0.6);
-  --secondary: rgba(255, 255, 255, 0.07);
-  --secondary-strong: rgba(255, 255, 255, 0.11);
-  --accent: #ff7f29;
-  --accent-strong: #ff9c52;
-  --accent-foreground: #1d1209;
-  --muted-foreground: #96a2bc;
-  --border: rgba(255, 255, 255, 0.1);
-  --ring: rgba(74, 178, 255, 0.72);
-  --danger: #be2d42;
-  --shadow-soft: 0 20px 50px rgba(0, 0, 0, 0.22);
-  --shadow-card: 0 28px 80px rgba(3, 8, 20, 0.42);
-  color-scheme: dark;
+  --fedex-purple: #4d148c;
+  --fedex-orange: #ff6200;
+  --background: #ececec;
+  --foreground: #333333;
+  --text: #333333;
+  --ink-strong: #333333;
+  --panel: #ffffff;
+  --panel-subtle: #f9f9f9;
+  --secondary: #6e6e6e;
+  --secondary-strong: #575757;
+  --accent: #ff6200;
+  --accent-strong: #e55a00;
+  --accent-foreground: #ffffff;
+  --muted-foreground: #6a6a6a;
+  --border: #d9d9d9;
+  --line: #d9d9d9;
+  --ring: rgba(77, 20, 140, 0.22);
+  --danger: #b4234a;
+  --shadow-soft: 0 7px 20px rgba(0, 0, 0, 0.07);
+  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.18);
+  color-scheme: light;
 }
 
 * {
@@ -62,15 +66,15 @@ select {
 .leaflet-container {
   width: 100%;
   height: 100%;
-  background: #0f1728;
-  border-radius: 28px;
+  background: #ffffff;
+  border-radius: 12px;
 }
 
 .leaflet-control-attribution,
 .leaflet-control-zoom a {
-  background: rgba(15, 24, 42, 0.88) !important;
+  background: #ffffff !important;
   color: var(--foreground) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--border) !important;
 }
 
 ::-webkit-scrollbar {
@@ -81,10 +85,65 @@ select {
 ::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(77, 20, 140, 0.18);
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.bg-white\/4,
+.bg-white\/5,
+.bg-white\/6,
+.bg-white\/7,
+.bg-white\/8,
+.bg-white\/10,
+.bg-white\/12 {
+  background: #f9f9f9 !important;
+}
+
+.border-white\/8,
+.border-white\/10,
+.border-white\/12 {
+  border-color: var(--border) !important;
+}
+
+.bg-emerald-400\/12,
+.bg-emerald-400\/14,
+.bg-emerald-400\/15 {
+  background: #eaf7ec !important;
+}
+
+.text-emerald-200 {
+  color: #1c6630 !important;
+}
+
+.bg-rose-400\/10,
+.bg-rose-400\/15 {
+  background: #ffe9ee !important;
+}
+
+.text-rose-200 {
+  color: #9f1f43 !important;
+}
+
+.bg-amber-300\/10 {
+  background: #fff2e8 !important;
+}
+
+.border-amber-300\/20 {
+  border-color: #ffd4b9 !important;
+}
+
+.text-amber-100 {
+  color: #9f4708 !important;
+}
+
+.bg-slate-500\/10 {
+  background: #f1edf9 !important;
+}
+
+.text-slate-300 {
+  color: #5b2b95 !important;
 }
