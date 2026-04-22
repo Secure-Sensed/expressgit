@@ -1,189 +1,23 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FedEx Tracking</title>
-  <meta name="description" content="Track your shipments by tracking number, reference number, or TCN.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Express Git Logistics</title>
+  <meta
+    name="description"
+    content="Track parcels, monitor live operations, and manage shipments from a unified logistics dashboard."
+  />
+  <meta name="theme-color" content="#101728" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
 </head>
 <body>
-  <header class="site-header" role="banner">
-    <div class="container nav-row">
-      <a class="logo" href="index.html" aria-label="FedEx home">
-        <span class="fed">Fed</span><span class="ex">Ex</span>
-      </a>
-
-      <nav class="main-nav" aria-label="Primary">
-        <a href="index.html" class="nav-link">
-          <span class="nav-icon" aria-hidden="true">
-            <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 7 12 3l9 4-9 4-9-4Z"></path>
-              <path d="M3 7v10l9 4 9-4V7"></path>
-              <path d="M12 11v10"></path>
-            </svg>
-          </span>
-          <span class="nav-label">Shipping</span>
-        </a>
-        <a href="track.html" class="nav-link">
-          <span class="nav-icon" aria-hidden="true">
-            <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="6"></circle>
-              <path d="m20 20-4.2-4.2"></path>
-            </svg>
-          </span>
-          <span class="nav-label">Tracking</span>
-        </a>
-        <a href="live-tracking.html" class="nav-link">
-          <span class="nav-icon" aria-hidden="true">
-            <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 14a4 4 0 0 1-4 4H8l-5 3V6a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"></path>
-            </svg>
-          </span>
-          <span class="nav-label">Support</span>
-        </a>
-      </nav>
-
-      <div class="nav-tools">
-        <button class="link-btn" id="authButton" type="button">Sign Up/Log In</button>
-        <button class="icon-btn" id="profileButton" type="button" aria-label="Profile">
-          <span class="icon-circle"></span>
-        </button>
-        <button class="icon-btn" id="searchButton" type="button" aria-label="Search">
-          <svg class="button-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="6"></circle>
-            <path d="m20 20-4.2-4.2"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <div class="crumb-bar" aria-label="Breadcrumb">
-    <div class="container">
-      <span class="crumb-home">Home</span>
-      <span class="crumb-sep">›</span>
-      <span>Tracking</span>
-    </div>
-  </div>
-
-  <section class="hero" aria-label="Tracking overview">
-    <div class="hero-overlay"></div>
-    <div class="container hero-content">
-      <h1>Tracking</h1>
-      <p>
-        Our tracking tools give you control over your shipments, by helping
-        you stay informed so you can ship with confidence.
-      </p>
-    </div>
-  </section>
-
-  <!-- Auth Modal -->
-  <div id="authModal" class="modal is-hidden">
-    <div class="modal-overlay"></div>
-    <div class="modal-content">
-      <button class="modal-close" type="button" aria-label="Close">✕</button>
-      
-      <div class="auth-tabs">
-        <button class="auth-tab active" type="button" data-tab="login">Sign In</button>
-        <button class="auth-tab" type="button" data-tab="signup">Sign Up</button>
-      </div>
-
-      <!-- Login Form -->
-      <form id="loginForm" class="auth-form active">
-        <h2>Sign In</h2>
-        <div class="form-group">
-          <label for="loginEmail">Email</label>
-          <input id="loginEmail" type="email" placeholder="your@email.com" required>
-        </div>
-        <div class="form-group">
-          <label for="loginPassword">Password</label>
-          <input id="loginPassword" type="password" placeholder="••••••••" required>
-        </div>
-        <div id="loginMessage" class="form-message"></div>
-        <button type="submit" class="auth-btn">Sign In</button>
-      </form>
-
-      <!-- Signup Form -->
-      <form id="signupForm" class="auth-form">
-        <h2>Create Account</h2>
-        <div class="form-group">
-          <label for="signupName">Full Name</label>
-          <input id="signupName" type="text" placeholder="John Doe" required>
-        </div>
-        <div class="form-group">
-          <label for="signupEmail">Email</label>
-          <input id="signupEmail" type="email" placeholder="your@email.com" required>
-        </div>
-        <div class="form-group">
-          <label for="signupPassword">Password</label>
-          <input id="signupPassword" type="password" placeholder="••••••••" required>
-        </div>
-        <div id="signupMessage" class="form-message"></div>
-        <button type="submit" class="auth-btn">Create Account</button>
-      </form>
-    </div>
-  </div>
-
-  <main class="page-main">
-    <section class="hero" aria-label="Tracking overview">
-      <div class="hero-overlay"></div>
-      <div class="container hero-content">
-        <h1>Track Your Shipment</h1>
-        <p>
-          Real-time tracking with live maps, route updates, and delivery
-          notifications. Know exactly where your package is at all times.
-        </p>
-        <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
-          <a href="track.html" style="display: inline-block; padding: 12px 24px; background: var(--fedex-orange); color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Track Package</a>
-          <a href="live-tracking.html" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: rgba(255, 255, 255, 0.2); color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">
-            <svg class="button-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 22s7-6 7-12a7 7 0 1 0-14 0c0 6 7 12 7 12Z"></path>
-              <circle cx="12" cy="10" r="2.5"></circle>
-            </svg>
-            <span>Live Map</span>
-          </a>
-        </div>
-      </div>
-    </section>
-    <section class="track-shell" aria-label="Track shipments">
-      <h2>Track the way you want</h2>
-      <p class="track-intro">
-        Need the status of your shipment or proof of delivery? Enter your tracking number or
-        reference number below.
-      </p>
-
-      <div class="tabs" role="tablist" aria-label="Tracking modes">
-        <button class="tab active" type="button" role="tab" aria-selected="true" data-mode="tracking">Tracking number</button>
-        <button class="tab" type="button" role="tab" aria-selected="false" data-mode="reference">Track by reference</button>
-        <button class="tab" type="button" role="tab" aria-selected="false" data-mode="tcn">Track by TCN</button>
-        <button class="tab" type="button" role="tab" aria-selected="false" data-mode="pod">Obtain proof of delivery</button>
-      </div>
-
-      <p id="entryHint" class="entry-note">
-        Enter up to 30 of your FedEx tracking, door tag, or FedEx Office order numbers
-        (one per line).
-      </p>
-
-      <form id="trackForm" class="track-form" novalidate>
-        <label id="entryLabel" for="entryInput">Tracking number*</label>
-        <textarea id="entryInput" rows="4" autocomplete="off" placeholder="Enter one number per line"></textarea>
-        <p class="helper-link">NEED HELP?</p>
-        <button id="submitButton" type="submit" class="track-btn">TRACK</button>
-      </form>
-
-      <div id="formMessage" class="form-message" aria-live="polite"></div>
-    </section>
-
-    <section id="resultsSection" class="results-section is-hidden" aria-live="polite" aria-label="Tracking results">
-      <h3>Tracking Results</h3>
-      <div id="resultsList" class="results-list"></div>
-    </section>
-  </main>
-
-  <script src="app.js"></script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

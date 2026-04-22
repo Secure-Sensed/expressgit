@@ -6,6 +6,7 @@ const { URL } = require("url");
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT || 4173);
 const ROOT = __dirname;
+const DIST_ROOT = path.join(ROOT, "dist");
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -101,17 +102,24 @@ async function handleStatic(req, res, pathname) {
     return;
   }
 
+  const staticRoot = fs.existsSync(DIST_ROOT) ? DIST_ROOT : ROOT;
   const requested = pathname === "/" ? "/index.html" : pathname;
-  const filePath = path.join(ROOT, requested);
+  let filePath = path.join(staticRoot, requested);
 
-  if (!isInsideRoot(filePath, ROOT)) {
+  if (!isInsideRoot(filePath, staticRoot)) {
     respondText(res, 403, "Forbidden");
     return;
   }
 
   if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
-    respondText(res, 404, "Not found");
-    return;
+    // When serving the built Vite app, fall back to index.html for SPA routes.
+    const hasExtension = path.extname(pathname).length > 0;
+    if (staticRoot === DIST_ROOT && !hasExtension) {
+      filePath = path.join(staticRoot, "index.html");
+    } else {
+      respondText(res, 404, "Not found");
+      return;
+    }
   }
 
   const ext = path.extname(filePath).toLowerCase();
