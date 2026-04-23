@@ -15,7 +15,7 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm", className)}
+    className={cn("fixed inset-0 z-50 bg-black/60", className)}
     {...props}
   />
 ));
@@ -30,13 +30,13 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-2rem)] max-w-xl translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[32px] border border-[color:var(--border)] bg-[color:var(--panel)] p-6 shadow-[var(--shadow-card)] duration-200",
+        "fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-2rem)] max-w-xl translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl border border-[color:var(--border)] bg-[color:var(--panel)] p-6 shadow-[var(--shadow-card)] duration-200",
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/5 p-2 text-[color:var(--muted-foreground)] transition-colors hover:text-[color:var(--foreground)]">
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md bg-[rgba(0,0,0,0.05)] p-2 text-[color:var(--muted-foreground)] transition-colors hover:bg-[rgba(0,0,0,0.1)] hover:text-[color:var(--foreground)]">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -59,7 +59,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("font-[family-name:var(--font-display)] text-2xl text-[color:var(--foreground)]", className)}
+    className={cn("text-2xl font-bold text-[color:var(--fedex-purple)]", className)}
     {...props}
   />
 ));

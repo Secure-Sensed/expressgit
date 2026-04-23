@@ -121,6 +121,24 @@ export function AdminPage() {
     }
   }, []);
 
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    const savedDraft = window.localStorage.getItem("fdx_admin_draft");
+    if (savedDraft) {
+      try {
+        const parsedDraft = JSON.parse(savedDraft);
+        setDraft(parsedDraft);
+      } catch (error) {
+        console.error("Failed to parse saved draft:", error);
+      }
+    }
+  }, []);
+
+  // Save draft to localStorage whenever it changes
+  useEffect(() => {
+    window.localStorage.setItem("fdx_admin_draft", JSON.stringify(draft));
+  }, [draft]);
+
   useEffect(() => {
     const selected = shipments.find((shipment) => shipment.trackingNumber === selectedTracking);
     if (selected) {
@@ -223,6 +241,8 @@ export function AdminPage() {
       setQuickLocation(preset.lastLocation);
       await loadDashboard();
       setSelectedTracking(trackingNumber);
+      // Force update the draft with the new tracking number
+      setDraft(prev => ({ ...prev, trackingNumber }));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to create shipment.");
     } finally {

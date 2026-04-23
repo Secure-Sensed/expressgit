@@ -10,17 +10,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[color:var(--accent)] text-[color:var(--accent-foreground)] shadow-[0_18px_45px_rgba(255,127,41,0.35)] hover:translate-y-[-1px] hover:brightness-105",
+          "bg-[linear-gradient(135deg,var(--accent),var(--accent-strong))] text-[color:var(--accent-foreground)] shadow-[0_2px_8px_rgba(255,98,0,0.3)] hover:translate-y-[-2px] hover:shadow-[0_4px_12px_rgba(255,98,0,0.4)]",
         secondary:
-          "bg-[color:var(--secondary)] text-[color:var(--secondary-foreground)] hover:bg-[color:var(--secondary-strong)]",
+          "bg-[color:var(--secondary)] text-white hover:bg-[color:var(--secondary-strong)]",
         outline:
-          "border border-[color:var(--border)] bg-white/5 text-[color:var(--foreground)] hover:border-[color:var(--accent)] hover:bg-white/8",
+          "border border-[color:var(--border)] bg-white text-[color:var(--foreground)] hover:border-[color:var(--fedex-purple)] hover:text-[color:var(--fedex-purple)]",
         ghost:
-          "text-[color:var(--foreground)] hover:bg-white/8",
+          "text-[color:var(--fedex-purple)] hover:bg-[#f1edf9]",
         destructive:
-          "bg-[color:var(--danger)] text-white shadow-[0_16px_35px_rgba(190,45,66,0.35)] hover:brightness-110",
+          "bg-[color:var(--danger)] text-white hover:brightness-95",
         frosted:
-          "border border-white/12 bg-white/7 text-white backdrop-blur-xl hover:bg-white/12"
+          "bg-[linear-gradient(135deg,var(--accent),var(--accent-strong))] text-[color:var(--accent-foreground)] shadow-[0_2px_8px_rgba(255,98,0,0.3)] hover:translate-y-[-2px] hover:shadow-[0_4px_12px_rgba(255,98,0,0.4)]"
       },
       size: {
         default: "h-11 px-5 py-2.5",

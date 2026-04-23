@@ -26,6 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loadSession() {
     try {
       await refresh();
+    } catch (_error) {
+      setUser(null);
     } finally {
       setLoading(false);
     }
