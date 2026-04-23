@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Loader2,
+  LogOut,
   MapPinned,
   PackagePlus,
   RefreshCcw,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { AdminOnboardingTour } from "@/components/admin-onboarding-tour";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 import * as api from "@/lib/api";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils";
 import type { Shipment, Stats, SupportMessage, SupportThread, User } from "@/types";
@@ -31,6 +34,8 @@ const statsFallback: Stats = {
   delivered: 0,
   customers: 0
 };
+const ADMIN_ONBOARDING_KEY = "fdx_admin_onboarded_v1";
+const ADMIN_SHOW_ONBOARDING_KEY = "fdx_admin_show_onboarding_v1";
 
 const presets = {
   Pending: {
@@ -82,6 +87,7 @@ type NotificationState = {
 };
 
 export function AdminPage() {
+  const { admin, logout } = useAdminAuth();
   const [stats, setStats] = useState<Stats>(statsFallback);
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [threads, setThreads] = useState<SupportThread[]>([]);
@@ -101,9 +107,18 @@ export function AdminPage() {
   const [deleting, setDeleting] = useState(false);
   const [quickWorking, setQuickWorking] = useState(false);
   const [supportLoading, setSupportLoading] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     void loadDashboard(true);
+  }, []);
+
+  useEffect(() => {
+    const forceShow = window.sessionStorage.getItem(ADMIN_SHOW_ONBOARDING_KEY) === "1";
+    const seen = window.localStorage.getItem(ADMIN_ONBOARDING_KEY);
+    if (forceShow || !seen) {
+      setShowOnboarding(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -387,8 +402,19 @@ export function AdminPage() {
     }
   }
 
+  async function logoutAdmin() {
+    try {
+      await logout();
+      toast.success("Admin signed out.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to sign out.");
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {showOnboarding && <AdminOnboardingTour onDismiss={() => setShowOnboarding(false)} />}
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard accent="orange" label="Total parcels" value={stats.total} detail="All shipments available to the admin console." />
         <MetricCard accent="blue" label="In transit" value={stats.inTransit} detail="Shipments currently moving through the network." />
@@ -402,12 +428,20 @@ export function AdminPage() {
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <CardTitle>Admin console</CardTitle>
-                <CardDescription>Create, update, and monitor shipments in one place. Receiver notifications are sent on create/update.</CardDescription>
+                <CardDescription>
+                  {`Signed in as ${admin?.email || "admin"}. Create, update, and monitor shipments in one place.`}
+                </CardDescription>
               </div>
-              <Button variant="outline" onClick={() => void loadDashboard(true)} disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-                Refresh data
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => void loadDashboard(true)} disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                  Refresh data
+                </Button>
+                <Button variant="outline" onClick={() => void logoutAdmin()}>
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="rounded-[24px] border border-[#d7c8ff] bg-[#f1edf9] px-4 py-3 text-sm leading-6 text-[#5b2b95]">

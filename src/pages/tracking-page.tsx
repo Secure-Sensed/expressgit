@@ -208,17 +208,15 @@ export function TrackingPage() {
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="space-y-6">
         <Card className="overflow-hidden">
-          <CardContent className="relative p-6 sm:p-8">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,127,41,0.18),transparent_25%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_55%)]" />
-            <div className="relative space-y-6">
+          <CardContent className="p-6 sm:p-8">
+            <div className="space-y-6">
               <div className="space-y-3">
-                <Badge variant="accent" className="w-fit">
-                  Tracking workspace
+                <Badge variant="muted" className="w-fit">
+                  Tracking
                 </Badge>
-                <h1 className="font-[family-name:var(--font-display)] text-4xl leading-none sm:text-5xl">Track, verify, and act from one page.</h1>
-                <p className="max-w-2xl text-base leading-7 text-[color:var(--muted-foreground)]">
-                  Search by tracking number, customer reference, TCN, or proof-of-delivery request. The result cards
-                  keep shipment data, timeline, and support actions in the same place.
+                <h1 className="text-4xl font-light leading-none sm:text-5xl">Track the way you want</h1>
+                <p className="max-w-3xl text-xl leading-8 text-[color:var(--muted-foreground)]">
+                  Need the status of your shipment or proof of delivery? Enter your tracking number or reference number below.
                 </p>
               </div>
 

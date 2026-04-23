@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to FEDEX Supabase</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Inter, system-ui, sans-serif;
+      background: radial-gradient(circle at top left, #ff9a9e 0%, #fad0c4 40%, #fad0c4 100%),
+                  radial-gradient(circle at bottom right, #a18cd1 0%, #fbc2eb 40%, transparent 100%);
+      color: #1f1f38;
+    }
+
+    .card {
+      max-width: 780px;
+      width: 100%;
+      margin: 24px;
+      padding: 36px;
+      border-radius: 32px;
+      box-shadow: 0 32px 100px rgba(45, 35, 70, 0.18);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2.4rem, 4vw, 3.4rem);
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      background: linear-gradient(90deg, #7f5af0, #ff6b6b, #ffb86c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p {
+      font-size: 1.05rem;
+      line-height: 1.75;
+      margin: 0 0 24px;
+    }
+
+    .pill-list {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      margin: 24px 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      box-shadow: 0 12px 30px rgba(118, 75, 162, 0.2);
+    }
+
+    .notice {
+      margin-top: 28px;
+      padding: 20px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,255,255,0.72));
+      border: 1px solid rgba(129, 140, 248, 0.2);
+    }
+
+    code {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(31, 41, 55, 0.06);
+      color: #111827;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Welcome to FEDEX </h1>
+    <p>
+      Your project is ready with the complete FEDEX data model, including user profiles, shipments, events, vehicles, location tracking, and support threads.
+    </p>
+    <div class="pill-list">
+      <div class="pill">Fast signup / login</div>
+      <div class="pill">Shipment tracking</div>
+      <div class="pill">Vehicle telemetry</div>
+      <div class="pill">Support chat</div>
+    </div>
+    <p>
+  </div>
+</body>
+</html>

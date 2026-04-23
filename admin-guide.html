@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpressGit Admin Console Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            padding: 60px 40px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            border-bottom: 3px solid #ff6b35;
+            padding-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1em;
+            color: #666;
+        }
+        
+        .toc {
+            background: #f8f9fa;
+            border-left: 4px solid #ff6b35;
+            padding: 20px 25px;
+            margin: 30px 0;
+            border-radius: 6px;
+        }
+        
+        .toc h2 {
+            color: #ff6b35;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .toc ol {
+            margin-left: 20px;
+        }
+        
+        .toc li {
+            margin-bottom: 8px;
+        }
+        
+        .toc a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        section {
+            margin: 50px 0;
+            padding: 30px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        section:last-child {
+            border-bottom: none;
+        }
+        
+        h2 {
+            font-size: 1.8em;
+            color: #ff6b35;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #fff3e0;
+        }
+        
+        h3 {
+            font-size: 1.3em;
+            color: #333;
+            margin: 25px 0 15px 0;
+        }
+        
+        h4 {
+            font-size: 1.1em;
+            color: #555;
+            margin: 20px 0 10px 0;
+            font-weight: 600;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+        
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        table th {
+            background: linear-gradient(135deg, #ff6b35, #ff8955);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .highlight {
+            background: #fff3e0;
+            border-left: 4px solid #ff6b35;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .tip {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #1b5e20;
+        }
+        
+        .warning {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #b71c1c;
+        }
+        
+        .step-list {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+        
+        .step-list li {
+            counter-increment: step-counter;
+            margin-bottom: 15px;
+            padding-left: 40px;
+            position: relative;
+        }
+        
+        .step-list li:before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #ff6b35;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+        
+        .method-box {
+            background: #f9f9f9;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .method-title {
+            font-weight: 600;
+            color: #ff6b35;
+            margin-bottom: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            color: #999;
+            font-size: 0.95em;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 ExpressGit Admin Console</h1>
+            <p class="subtitle">Complete Step-by-Step User Guide</p>
+        </header>
+
+        <div class="toc">
+            <h2>Quick Navigation</h2>
+            <ol>
+                <li><a href="#getting-started">Getting Started</a></li>
+                <li><a href="#dashboard">Dashboard & Stats</a></li>
+                <li><a href="#inventory">Shipment Inventory</a></li>
+                <li><a href="#creating">Creating Shipments</a></li>
+                <li><a href="#editing">Editing Shipments</a></li>
+                <li><a href="#location">Live Location Updates</a></li>
+                <li><a href="#support">Support Inbox</a></li>
+                <li><a href="#users">User Management</a></li>
+                <li><a href="#notifications">Email Notifications</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+            </ol>
+        </div>
+
+        <section id="getting-started">
+            <h2>🚀 Getting Started</h2>
+            
+            <h3>Step 1: Access the Admin Console</h3>
+            <ul class="step-list">
+                <li>Open your browser and navigate to <code>/admin-login</code></li>
+                <li>Enter your admin credentials:
+                    <ul style="list-style: disc; margin-top: 8px;">
+                        <li><strong>Email</strong>: Your registered admin email</li>
+                        <li><strong>Password</strong>: Your admin account password</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Sign in</strong></li>
+                <li>You'll be redirected to the main Admin Console dashboard</li>
+            </ul>
+
+            <h3>Step 2: Review the Onboarding Guide</h3>
+            <p>On your first sign-in, you'll see the <strong>Admin First Sign-In Guide</strong> card. Key takeaways:</p>
+            <ul>
+                <li>Search before creating new shipments</li>
+                <li>Always enter receiver email for notifications</li>
+                <li>Update location and status when shipments change</li>
+                <li>Reply to customer support messages</li>
+                <li>Monitor email notification status</li>
+            </ul>
+            <p>Click <strong>Mark as done</strong> to dismiss this guide.</p>
+        </section>
+
+        <section id="dashboard">
+            <h2>📊 Dashboard & Stats</h2>
+            
+            <p>The dashboard displays four key metrics at the top of your screen:</p>
+            
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>Description</th>
+                    <th>Use Case</th>
+                </tr>
+                <tr>
+                    <td><strong>Total parcels</strong></td>
+                    <td>All shipments in the system</td>
+                    <td>Understand overall volume</td>
+                </tr>
+                <tr>
+                    <td><strong>In transit</strong></td>
+                    <td>Shipments currently moving</td>
+                    <td>Monitor active shipments</td>
+                </tr>
+                <tr>
+                    <td><strong>Delivered</strong></td>
+                    <td>Completed shipments</td>
+                    <td>Track success rate</td>
+                </tr>
+                <tr>
+                    <td><strong>Customers</strong></td>
+                    <td>Distinct customer identities</td>
+                    <td>Understand customer base</td>
+                </tr>
+            </table>
+
+            <h3>Refresh Button</h3>
+            <ul>
+                <li>Click <strong>Refresh data</strong> to reload all statistics and shipment lists</li>
+                <li>Shows a spinner while loading</li>
+                <li>Useful after making changes</li>
+            </ul>
+
+            <h3>Sign Out</h3>
+            <ul>
+                <li>Click <strong>Sign out</strong> to end your admin session</li>
+                <li>You'll be logged out and returned to the login page</li>
+            </ul>
+        </section>
+
+        <section id="inventory">
+            <h2>📋 Shipment Inventory</h2>
+
+            <h3>Finding Shipments</h3>
+            <p>The <strong>Shipment Inventory</strong> panel on the left lists all available shipments.</p>
+
+            <h4>Search</h4>
+            <p>Enter any of the following in the search box:</p>
+            <ul>
+                <li>Tracking number (e.g., <code>771975185243</code>)</li>
+                <li>Reference number (e.g., <code>REF-INTL-1001</code>)</li>
+                <li>TCN code</li>
+                <li>Origin city (e.g., <code>Memphis</code>)</li>
+                <li>Destination city (e.g., <code>Los Angeles</code>)</li>
+                <li>Customer email or name</li>
+            </ul>
+            <p>Results update in real-time as you type.</p>
+
+            <h4>Filter by Status</h4>
+            <p>Use the <strong>Filter status</strong> dropdown:</p>
+            <ul>
+                <li><strong>All statuses</strong> - Show all shipments</li>
+                <li><strong>Pending</strong> - Awaiting processing</li>
+                <li><strong>In Transit</strong> - Currently moving</li>
+                <li><strong>Out for Delivery</strong> - On final vehicle</li>
+                <li><strong>Delivered</strong> - Completed</li>
+                <li><strong>Exception</strong> - Issues or delays</li>
+            </ul>
+
+            <div class="tip">
+                <strong>💡 Tip:</strong> Combine search and filter for precise results (e.g., search "Atlanta" + filter "Delivered")
+            </div>
+
+            <h3>Selecting a Shipment</h3>
+            <p>Click on any shipment to:</p>
+            <ul>
+                <li>Load it into the detail editor on the right</li>
+                <li>View and edit all its information</li>
+                <li>Access its support thread messages</li>
+                <li>Update its location</li>
+            </ul>
+        </section>
+
+        <section id="creating">
+            <h2>➕ Creating Shipments</h2>
+
+            <div class="method-box">
+                <div class="method-title">Method 1: Quick Create (Recommended for Speed)</div>
+                
+                <h3>Steps</h3>
+                <ol class="step-list">
+                    <li><strong>Select Status Preset</strong>
+                        <ul style="margin-top: 10px;">
+                            <li><strong>Pending</strong>: Memphis → Atlanta (3 days)</li>
+                            <li><strong>In Transit</strong>: Indianapolis → Newark (1 day)</li>
+                            <li><strong>Out for Delivery</strong>: Dallas → Austin (same day)</li>
+                            <li><strong>Delivered</strong>: Indianapolis → Atlanta (with receipt)</li>
+                            <li><strong>Exception</strong>: Phoenix → Newark (delayed, 2 days)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Enter Customer Email</strong> (Recommended)
+                        <ul style="margin-top: 10px;">
+                            <li>E.g., <code>customer@example.com</code></li>
+                            <li>Without this, no notification email will be sent</li>
+                            <li>Customer name is auto-populated from the email</li>
+                        </ul>
+                    </li>
+                    <li><strong>Generate Parcel</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>Click <strong>Generate parcel</strong></li>
+                            <li>Tracking number is automatically created</li>
+                            <li>Success message appears with new tracking number</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="method-box">
+                <div class="method-title">Method 2: Full Shipment Editor (Complete Control)</div>
+                
+                <h3>Form Fields</h3>
+                <table>
+                    <tr>
+                        <th>Field</th>
+                        <th>Description</th>
+                        <th>Required</th>
+                    </tr>
+                    <tr>
+                        <td>Tracking Number</td>
+                        <td>Unique identifier (auto-generated if blank)</td>
+                        <td>No</td>
+                    </tr>
+                    <tr>
+                        <td>Reference Number</td>
+                        <td>Customer or internal reference</td>
+                        <td>No</td>
+                    </tr>
+                    <tr>
+                        <td>Status</td>
+                        <td>Current shipment status</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Origin</td>
+                        <td>Pickup location</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Destination</td>
+                        <td>Delivery location</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Last Location</td>
+                        <td>Current location of package</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Customer Email</td>
+                        <td>For notifications and support</td>
+                        <td>No</td>
+                    </tr>
+                    <tr>
+                        <td>Estimated Delivery</td>
+                        <td>Expected delivery date & time</td>
+                        <td>No</td>
+                    </tr>
+                </table>
+
+                <h3>Event Details (Optional)</h3>
+                <p>Add an initial shipment event:</p>
+                <ul>
+                    <li><strong>Event Title</strong>: Description (e.g., "Shipment picked up")</li>
+                    <li><strong>Event Location</strong>: Location of event</li>
+                    <li><strong>Event Details</strong>: Additional notes</li>
+                </ul>
+
+                <h3>Save</h3>
+                <ul>
+                    <li>Click <strong>Save shipment</strong></li>
+                    <li>Tracking number auto-generated if not entered</li>
+                    <li>Email notification sent if customer email provided</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="editing">
+            <h2>✏️ Editing Shipments</h2>
+
+            <h3>Opening an Existing Shipment</h3>
+            <ul class="step-list">
+                <li>Use <strong>Search</strong> in Shipment Inventory to find the shipment</li>
+                <li>Click on it in the list</li>
+                <li>The detail editor populates with its current data</li>
+            </ul>
+
+            <h3>Common Edit Scenarios</h3>
+
+            <h4>Update Status and Location</h4>
+            <ul class="step-list">
+                <li>Find shipment by tracking number</li>
+                <li>Change <strong>Status</strong> dropdown (e.g., "In Transit" → "Out for Delivery")</li>
+                <li>Update <strong>Last Location</strong> to new city/address</li>
+                <li>Add an event describing the change</li>
+                <li>Click <strong>Save shipment</strong></li>
+                <li>Notification email sent to customer</li>
+            </ul>
+
+            <h4>Mark as Delivered</h4>
+            <ul class="step-list">
+                <li>Select the shipment</li>
+                <li>Change <strong>Status</strong> to "Delivered"</li>
+                <li>Fill in <strong>Proof of Delivery</strong>:
+                    <ul>
+                        <li>Set delivery timestamp</li>
+                        <li>Enter recipient name (e.g., "Front Desk")</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Save shipment</strong></li>
+                <li>Delivery notification email sent</li>
+            </ul>
+
+            <h4>Deleting a Shipment</h4>
+            <ul class="step-list">
+                <li>Select the shipment from inventory</li>
+                <li>Scroll to bottom of detail editor</li>
+                <li>Click <strong>Delete shipment</strong> button</li>
+                <li>Confirm in the popup dialog</li>
+                <li>Shipment is removed</li>
+            </ul>
+
+            <div class="warning">
+                <strong>⚠️ Warning:</strong> Deletion cannot be undone. Confirm you're deleting the correct shipment.
+            </div>
+        </section>
+
+        <section id="location">
+            <h2>📍 Live Location Updates</h2>
+
+            <p>The <strong>Live Location Update</strong> panel provides a quick way to update a shipment's current location.</p>
+
+            <h3>Steps</h3>
+            <ol class="step-list">
+                <li><strong>Tracking Number</strong>
+                    <ul style="margin-top: 8px;">
+                        <li>Auto-populated from selected shipment</li>
+                        <li>OR type a different tracking number</li>
+                    </ul>
+                </li>
+                <li><strong>Current Location</strong>
+                    <ul style="margin-top: 8px;">
+                        <li>Enter new location (e.g., "Chicago, IL")</li>
+                    </ul>
+                </li>
+                <li><strong>Update Location</strong>
+                    <ul style="margin-top: 8px;">
+                        <li>Click <strong>Update location</strong></li>
+                        <li>System saves and sends notification email</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>When to Use</h3>
+            <ul>
+                <li>Quick status updates for active shipments</li>
+                <li>Notification of milestone locations</li>
+                <li>Minimal data entry required</li>
+            </ul>
+        </section>
+
+        <section id="support">
+            <h2>💬 Support Inbox</h2>
+
+            <h3>Understanding Support Threads</h3>
+            <p>Support threads are conversations between customers and admin tied to specific tracking numbers.</p>
+
+            <h3>Viewing Support Threads</h3>
+            <p>The <strong>Support Inbox</strong> panel shows all recent threads:</p>
+            <ul>
+                <li>Each thread shows:
+                    <ul>
+                        <li>Tracking number</li>
+                        <li>Last message preview</li>
+                        <li>Timestamp (e.g., "2 hours ago")</li>
+                    </ul>
+                </li>
+                <li>Click any thread to focus that shipment</li>
+                <li>Load conversation history</li>
+            </ul>
+
+            <h3>Replying to Customers</h3>
+            <ol class="step-list">
+                <li>Select a thread from the list</li>
+                <li>Read the conversation to understand context</li>
+                <li>Type your admin response in the reply box</li>
+                <li>Click <strong>Send admin reply</strong></li>
+                <li>Message is saved; conversation updates immediately</li>
+            </ol>
+
+            <h3>What to Include in Replies</h3>
+            <ul>
+                <li>Shipment status updates</li>
+                <li>ETA information</li>
+                <li>Notes on any issues or delays</li>
+                <li>Escalations if needed</li>
+            </ul>
+        </section>
+
+        <section id="users">
+            <h2>👥 User Management</h2>
+
+            <p>The <strong>Registered Users</strong> panel shows all local authentication users.</p>
+
+            <h3>Viewing Users</h3>
+            <p>Each user card displays:</p>
+            <ul>
+                <li>User name (if registered)</li>
+                <li>Email (login identifier)</li>
+            </ul>
+
+            <h3>Removing a User</h3>
+            <ol class="step-list">
+                <li>Find the user in the list</li>
+                <li>Click <strong>Remove</strong> button</li>
+                <li>Confirm the deletion</li>
+                <li>User account is deleted</li>
+                <li>That email can be re-registered later</li>
+            </ol>
+
+            <div class="warning">
+                <strong>⚠️ Warning:</strong> Removed users lose access and cannot log back in.
+            </div>
+        </section>
+
+        <section id="notifications">
+            <h2>📧 Email Notifications</h2>
+
+            <h3>How Notifications Work</h3>
+            <p>When you create or update a shipment with a customer email:</p>
+            <ul class="step-list">
+                <li>System attempts to send an email notification</li>
+                <li>Status appears in a toast (popup message)</li>
+                <li>Success or error message displayed</li>
+            </ul>
+
+            <h3>Notification Status Messages</h3>
+            <table>
+                <tr>
+                    <th>Message</th>
+                    <th>Meaning</th>
+                    <th>Action</th>
+                </tr>
+                <tr>
+                    <td>"Receiver email notification sent."</td>
+                    <td>Email successfully delivered</td>
+                    <td>None; customer notified</td>
+                </tr>
+                <tr>
+                    <td>"Email notification failed: [error]"</td>
+                    <td>SMTP or network error</td>
+                    <td>Check email configuration</td>
+                </tr>
+                <tr>
+                    <td>"No receiver email found for this shipment."</td>
+                    <td>Customer email field empty</td>
+                    <td>Add email and re-create shipment</td>
+                </tr>
+                <tr>
+                    <td>"Email not configured..."</td>
+                    <td>Environment variables missing</td>
+                    <td>Set RESEND_API_KEY and MAIL_FROM</td>
+                </tr>
+            </table>
+
+            <h3>Configuration for Email</h3>
+            <p>To enable email notifications, set environment variables:</p>
+            <ul>
+                <li><code>RESEND_API_KEY</code> - API key from Resend</li>
+                <li><code>MAIL_FROM</code> - Sender email (e.g., <code>noreply@expressgit.com</code>)</li>
+            </ul>
+            <p>After setting, restart the application for changes to take effect.</p>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>🔧 Troubleshooting</h2>
+
+            <h3>Issue: Shipment Not Appearing in Search</h3>
+            <h4>Solution 1: Refresh data</h4>
+            <ul>
+                <li>Click <strong>Refresh data</strong> button</li>
+                <li>Wait for load to complete</li>
+            </ul>
+            <h4>Solution 2: Check filter</h4>
+            <ul>
+                <li>Try "All statuses" if unsure</li>
+            </ul>
+            <h4>Solution 3: Verify tracking number</h4>
+            <ul>
+                <li>Try partial search (e.g., "771975" instead of full number)</li>
+            </ul>
+
+            <h3>Issue: Email Notifications Not Sending</h3>
+            <h4>No customer email entered</h4>
+            <ul>
+                <li>Ensure <strong>Customer Email</strong> field is filled</li>
+            </ul>
+            <h4>Email service not configured</h4>
+            <ul>
+                <li>Check that <code>RESEND_API_KEY</code> and <code>MAIL_FROM</code> are set</li>
+                <li>Restart application after setting variables</li>
+            </ul>
+            <h4>Invalid email format</h4>
+            <ul>
+                <li>Confirm email is valid (check for typos)</li>
+            </ul>
+
+            <h3>Issue: Admin Console Blank or Not Loading</h3>
+            <h4>Solution 1: Clear browser cache</h4>
+            <ul>
+                <li>Press Ctrl+Shift+Delete (Cmd+Shift+Delete on Mac)</li>
+                <li>Clear cookies and cache</li>
+                <li>Refresh page</li>
+            </ul>
+            <h4>Solution 2: Check admin session</h4>
+            <ul>
+                <li>If not logged in, log back in</li>
+            </ul>
+
+            <h3>Issue: Support Messages Not Loading</h3>
+            <h4>Solution 1: Select a shipment</h4>
+            <ul>
+                <li>Support messages only show for selected shipment</li>
+                <li>Click a shipment from inventory</li>
+            </ul>
+            <h4>Solution 2: Refresh</h4>
+            <ul>
+                <li>Click <strong>Refresh data</strong></li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>📌 Best Practices</h2>
+            <ul>
+                <li>✅ Always enter customer email when creating shipments</li>
+                <li>✅ Add descriptive events when status changes</li>
+                <li>✅ Reply to support messages promptly</li>
+                <li>✅ Review stats regularly</li>
+                <li>✅ Use search filters before creating duplicates</li>
+                <li>✅ Test email notifications after configuration changes</li>
+                <li>✅ Keep customer information accurate</li>
+                <li>✅ Monitor exceptions and update customers on delays</li>
+            </ul>
+        </section>
+
+        <div class="footer">
+            <p><strong>Last Updated:</strong> April 23, 2026 | <strong>Version:</strong> 1.0</p>
+            <p>For additional help, check the Admin First Sign-In Guide on your dashboard.</p>
+        </div>
+    </div>
+</body>
+</html>

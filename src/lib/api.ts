@@ -1,11 +1,11 @@
 import type {
+  User,
   Shipment,
   Stats,
   SupportMessage,
   SupportThread,
   TrackResult,
   TrackingMode,
-  User,
   Vehicle
 } from "@/types";
 
@@ -26,7 +26,17 @@ export async function fetchJson<T>(url: string, options: RequestInit = {}) {
   });
 
   const raw = await response.text();
-  const data = raw ? (JSON.parse(raw) as T & { error?: string }) : ({} as T & { error?: string });
+  let data = {} as T & { error?: string };
+
+  if (raw) {
+    try {
+      data = JSON.parse(raw) as T & { error?: string };
+    } catch (_error) {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    }
+  }
 
   if (!response.ok) {
     throw new Error((data && "error" in data && data.error) || `HTTP ${response.status}`);
@@ -37,6 +47,10 @@ export async function fetchJson<T>(url: string, options: RequestInit = {}) {
 
 export function getSession() {
   return fetchJson<{ user: User | null }>("/api/auth/session");
+}
+
+export function getAdminSession() {
+  return fetchJson<{ admin: User | null }>("/api/admin/auth/session");
 }
 
 export function login(payload: { email: string; password: string }) {
@@ -55,6 +69,19 @@ export function signup(payload: { name: string; email: string; password: string 
 
 export function logout() {
   return fetchJson<{ success?: boolean }>("/api/auth/logout", {
+    method: "POST"
+  });
+}
+
+export function adminLogin(payload: { email: string; password: string }) {
+  return fetchJson<{ admin: User }>("/api/admin/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function adminLogout() {
+  return fetchJson<{ success?: boolean }>("/api/admin/auth/logout", {
     method: "POST"
   });
 }

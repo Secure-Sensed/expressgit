@@ -71,7 +71,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{mode === "login" ? "Access your shipment desk" : "Create your shipment portal"}</DialogTitle>
+          <DialogTitle>{mode === "login" ? "Sign In" : "Create Account"}</DialogTitle>
           <DialogDescription>
             Sign in to request parcels, save tracked shipments, and keep support threads attached to your account.
           </DialogDescription>
@@ -106,6 +106,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               type="email"
               autoComplete="email"
               placeholder="dispatch@client.com"
+              maxLength={254}
               value={form.email}
               onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
               required
@@ -119,13 +120,15 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               type="password"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               placeholder="At least 8 characters"
+              maxLength={128}
+              minLength={mode === "login" ? undefined : 8}
               value={form.password}
               onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
               required
             />
           </div>
 
-          {error ? <p className="rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+          {error ? <p className="rounded-md border border-[#f6b5c5] bg-[#ffe9ee] px-4 py-3 text-sm text-[#9f1f43]">{error}</p> : null}
 
           <Button className="w-full" size="lg" type="submit" disabled={submitting}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
