@@ -4,6 +4,6 @@ export const BRAND = {
   // Logo is rendered as `${logoMain}${logoAccent}`, accent part in the accent colour.
   logoMain: "Transit",
   logoAccent: "Link",
-  tagline: "Track your shipments in real time",
+  tagline: "Shipment tracking",
   supportEmail: "Customer@supportcaha.icu"
 } as const;

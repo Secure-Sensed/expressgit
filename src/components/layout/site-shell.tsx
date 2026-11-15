@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { to: "/", label: "Home", end: true },
   { to: "/track", label: "Track" },
-  { to: "/operations", label: "Live network" },
-  { to: "/admin", label: "Admin" }
+  { to: "/operations", label: "Map" }
 ];
 
 export function LogoMark({ className = "h-9 w-9" }: { className?: string }) {
@@ -21,7 +20,7 @@ export function LogoMark({ className = "h-9 w-9" }: { className?: string }) {
       <rect width="40" height="40" rx="11" fill="#f59e0b" />
       <path d="M8 27c4-12 14-17 24-15" fill="none" stroke="#0b3350" strokeWidth="3" strokeLinecap="round" strokeDasharray="1 5.2" />
       <circle cx="9" cy="27" r="3.4" fill="#0b3350" />
-      <path d="M31.500 8.500l1.800 4.700 4.700 1.800-4.700 1.800-1.800 4.700-1.800-4.700-4.700-1.800 4.700-1.800z" fill="#0b3350" />
+      <circle cx="31" cy="12" r="3.4" fill="#0b3350" />
     </svg>
   );
 }

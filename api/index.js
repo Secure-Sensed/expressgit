@@ -19,7 +19,6 @@ const handlers = {
   "admin/users/delete": require("../lib/api/admin/users/delete"),
   "admin/update-location": require("../lib/api/admin/update-location"),
 
-  "auth/seed": require("../lib/api/auth/seed"),
   "auth/login": require("../lib/api/auth/login"),
   "auth/signup": require("../lib/api/auth/signup"),
   "auth/logout": require("../lib/api/auth/logout"),

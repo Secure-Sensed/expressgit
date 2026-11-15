@@ -171,7 +171,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   },
   {
     id: "complete",
-    title: "You're Ready!",
+    title: "Setup complete",
     description: "Start using the admin console with confidence",
     details: [
       "✓ You've learned all major features",

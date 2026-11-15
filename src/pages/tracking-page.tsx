@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Loader2, MessageSquareText, PackageSearch, Send, Sparkles } from "lucide-react";
+import { Loader2, MessageSquareText, PackageSearch, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { JourneyCard } from "@/components/journey-card";
@@ -21,33 +21,25 @@ import type { Shipment, SupportMessage, TrackResult, TrackingMode } from "@/type
 const modeCopy: Record<TrackingMode, { label: string; hint: string; placeholder: string }> = {
   tracking: {
     label: "Tracking number",
-    hint: "Enter up to 30 shipment identifiers. One value per line or comma-separated.",
-    placeholder: "TRK-LOS-101"
+    hint: "You can enter up to 30 numbers, separated by commas or new lines.",
+    placeholder: "Tracking number"
   },
   reference: {
     label: "Reference number",
-    hint: "Use the customer reference when the tracking number is not available yet.",
-    placeholder: "REF-INTL-1001"
+    hint: "Use the reference number if you do not have a tracking number.",
+    placeholder: "REF-…"
   },
   tcn: {
     label: "Transportation Control Number",
-    hint: "Search by TCN when routing shipments through enterprise workflows.",
-    placeholder: "TCN-99450001"
+    hint: "Search by Transportation Control Number.",
+    placeholder: "TCN-…"
   },
   pod: {
     label: "Tracking number for proof of delivery",
-    hint: "Retrieve delivery confirmation from a shipment that has already completed.",
-    placeholder: "TRK-SYD-112"
+    hint: "Look up the delivery confirmation for a shipment that has arrived.",
+    placeholder: "Tracking number"
   }
 };
-
-const examples: Array<{ mode: TrackingMode; label: string; value: string }> = [
-  { mode: "tracking", label: "Lagos → London", value: "TRK-LOS-101" },
-  { mode: "tracking", label: "Shanghai → Los Angeles", value: "TRK-SHA-102" },
-  { mode: "tracking", label: "Dubai → Sydney", value: "TRK-DXB-103" },
-  { mode: "tracking", label: "New York → Boston", value: "TRK-NYC-001" },
-  { mode: "pod", label: "Delivered (proof)", value: "TRK-SYD-112" }
-];
 
 export function TrackingPage() {
   const { user } = useAuth();
@@ -214,7 +206,7 @@ export function TrackingPage() {
           {
             title: "Shipment request created",
             location: requestDraft.origin,
-            details: requestDraft.notes || "Created from customer portal",
+            details: requestDraft.notes || "Requested by customer",
             timestamp: new Date().toISOString()
           }
         ]
@@ -238,18 +230,9 @@ export function TrackingPage() {
           <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-[color:var(--brand-accent)]/12 blur-3xl" />
           <div className="relative space-y-6">
             <div className="space-y-2">
-              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--accent-strong)]">
-                <span className="live-dot h-1.5 w-1.5 rounded-full bg-current" />
-                Live tracking
-              </p>
-              <h1 className="font-display text-4xl font-extrabold leading-[1.02] text-[color:var(--ink-strong)] sm:text-5xl">
-                Watch it move,
-                <br />
-                not just update.
-              </h1>
+              <h1 className="font-display text-4xl font-extrabold leading-[1.05] text-[color:var(--ink-strong)] sm:text-5xl">Track a shipment</h1>
               <p className="max-w-2xl text-base leading-7 text-[color:var(--muted-foreground)]">
-                Positions are calculated from the real flight or road time between the two cities, so the vehicle keeps moving on the map
-                between refreshes.
+                Enter a tracking number to see where it is, the route it is taking and when it is expected to arrive.
               </p>
             </div>
 
@@ -286,24 +269,6 @@ export function TrackingPage() {
                 </div>
                 <p className="text-sm text-[color:var(--muted-foreground)]">{modeCopy[mode].hint}</p>
               </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--muted-foreground)]">Try</span>
-                {examples.map((example) => (
-                  <button
-                    key={`${example.mode}-${example.value}`}
-                    type="button"
-                    className="rounded-full border border-[color:var(--border)] bg-[color:var(--panel-subtle)] px-3.5 py-1.5 text-sm transition-colors hover:border-[color:var(--brand-primary)] hover:bg-white"
-                    onClick={() => {
-                      setMode(example.mode);
-                      setInput(example.value);
-                      void performSearch(example.value, example.mode);
-                    }}
-                  >
-                    {example.label}
-                  </button>
-                ))}
-              </div>
             </form>
           </div>
         </section>
@@ -318,10 +283,10 @@ export function TrackingPage() {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                   </span>
-                  Live — position refreshes every 5 seconds{lastSync ? ` · last sync ${lastSync.toLocaleTimeString()}` : ""}
+                  Updates every 5 seconds{lastSync ? ` · last sync ${lastSync.toLocaleTimeString()}` : ""}
                 </span>
               ) : (
-                "Search a tracking number to see its route on the map."
+                "Enter a tracking number to see its route."
               )}
             </CardDescription>
           </CardHeader>
@@ -351,9 +316,6 @@ export function TrackingPage() {
             ) : (
               <div className="rounded-[24px] border border-dashed border-white/10 px-5 py-10 text-center">
                 <p className="font-medium">No results yet.</p>
-                <p className="mt-2 text-sm text-[color:var(--muted-foreground)]">
-                  Search for a shipment to open timeline details and support actions.
-                </p>
               </div>
             )}
           </CardContent>
@@ -364,7 +326,7 @@ export function TrackingPage() {
         <Card>
           <CardHeader>
             <CardTitle>My parcels</CardTitle>
-            <CardDescription>Signed-in users get quick access to their assigned shipments.</CardDescription>
+            <CardDescription>Shipments linked to your account.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {user ? (
@@ -388,10 +350,10 @@ export function TrackingPage() {
                   </button>
                 ))
               ) : (
-                <p className="text-sm text-[color:var(--muted-foreground)]">No parcels are assigned to your account yet.</p>
+                <p className="text-sm text-[color:var(--muted-foreground)]">No shipments on your account yet.</p>
               )
             ) : (
-              <p className="text-sm text-[color:var(--muted-foreground)]">Sign in from the header to load your shipments and request new ones.</p>
+              <p className="text-sm text-[color:var(--muted-foreground)]">Sign in to see your shipments and request new ones.</p>
             )}
           </CardContent>
         </Card>
@@ -399,7 +361,7 @@ export function TrackingPage() {
         <Card>
           <CardHeader>
             <CardTitle>Request a shipment</CardTitle>
-            <CardDescription>Create a new shipment request without leaving the tracking workspace.</CardDescription>
+            <CardDescription>Tell us where it is going from and to.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={submitShipmentRequest}>
@@ -427,15 +389,15 @@ export function TrackingPage() {
                 <Label htmlFor="request-notes">Notes</Label>
                 <Textarea
                   id="request-notes"
-                  placeholder="Packaging constraints, handoff notes, preferred delivery window..."
+                  placeholder="Anything we should know"
                   value={requestDraft.notes}
                   onChange={(event) => setRequestDraft((current) => ({ ...current, notes: event.target.value }))}
                   className="min-h-[120px]"
                 />
               </div>
               <Button className="w-full" type="submit" disabled={requestSaving}>
-                {requestSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Submit shipment request
+                {requestSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Submit request
               </Button>
             </form>
           </CardContent>
@@ -447,7 +409,7 @@ export function TrackingPage() {
             <CardDescription>
               {selectedTracking
                 ? `Support thread for ${selectedTracking}.`
-                : "Select a shipment result or personal parcel to open a support thread."}
+                : "Open a shipment to message support about it."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -489,22 +451,19 @@ export function TrackingPage() {
                   <Textarea
                     value={supportDraft}
                     onChange={(event) => setSupportDraft(event.target.value)}
-                    placeholder="Describe the issue, request an update, or ask for delivery confirmation..."
+                    placeholder="Write your message"
                     className="min-h-[110px]"
                   />
                   <Button className="w-full" onClick={() => void sendSupport()} disabled={supportLoading || !supportDraft.trim()}>
                     {supportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    Send support message
+                    Send message
                   </Button>
                 </div>
               </>
             ) : (
               <div className="rounded-[24px] border border-dashed border-white/10 px-5 py-8 text-center">
                 <MessageSquareText className="mx-auto h-8 w-8 text-[color:var(--muted-foreground)]" />
-                <p className="mt-3 font-medium">Support stays tied to a shipment.</p>
-                <p className="mt-2 text-sm text-[color:var(--muted-foreground)]">
-                  Open a shipment result first so the thread stays attached to the correct tracking number.
-                </p>
+                <p className="mt-3 text-sm text-[color:var(--muted-foreground)]">Search for a shipment first.</p>
               </div>
             )}
           </CardContent>

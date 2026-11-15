@@ -84,9 +84,9 @@ export function OperationsPage() {
         <div>
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--accent-strong)]">
             <Radio className="h-3.5 w-3.5" />
-            Live network
+            Live
           </p>
-          <h1 className="mt-1 font-display text-4xl font-extrabold leading-none text-[color:var(--ink-strong)] sm:text-5xl">Everything in motion</h1>
+          <h1 className="mt-1 font-display text-4xl font-extrabold leading-none text-[color:var(--ink-strong)] sm:text-5xl">Shipment map</h1>
         </div>
 
         <dl className="grid grid-cols-4 gap-2 sm:gap-3">
@@ -212,7 +212,7 @@ export function OperationsPage() {
                     </li>
                   );
                 })}
-            {!loading && visible.length === 0 ? <li className="p-8 text-center text-sm text-[color:var(--muted-foreground)]">Nothing matches these filters.</li> : null}
+            {!loading && visible.length === 0 ? <li className="p-8 text-center text-sm text-[color:var(--muted-foreground)]">{shipments.length ? "Nothing matches these filters." : "Sign in to see your shipments here, or track one by number."}</li> : null}
           </ul>
 
           {selectedShipment ? (
