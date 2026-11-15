@@ -277,7 +277,7 @@ export function TrackingPage() {
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     placeholder={modeCopy[mode].placeholder}
-                    className="h-14 flex-1 text-base"
+                    className="h-14 w-full text-base sm:flex-1"
                   />
                   <Button size="lg" type="submit" disabled={loading} className="h-14 px-8">
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageSearch className="h-4 w-4" />}

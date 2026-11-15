@@ -87,7 +87,7 @@ export function HomePage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Tracking number, e.g. TRK-LOS-101"
-                className="h-14 flex-1 rounded-2xl border border-white/20 bg-white px-5 text-base text-[color:var(--foreground)] outline-none transition-shadow placeholder:text-[#8a96a0] focus:shadow-[0_0_0_4px_rgba(245,158,11,0.35)]"
+                className="h-14 w-full rounded-2xl border sm:flex-1 border-white/20 bg-white px-5 text-base text-[color:var(--foreground)] outline-none transition-shadow placeholder:text-[#8a96a0] focus:shadow-[0_0_0_4px_rgba(245,158,11,0.35)]"
               />
               <button
                 type="submit"

@@ -234,8 +234,8 @@ export function OperationsPage() {
 
 function Counter({ label, value, tone }: { label: string; value: number; tone?: "primary" | "success" }) {
   return (
-    <div className="min-w-[78px] rounded-2xl border border-[color:var(--border)] bg-white px-3.5 py-2.5 shadow-[var(--shadow-soft)]">
-      <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--muted-foreground)]">{label}</dt>
+    <div className="min-w-0 rounded-2xl sm:min-w-[78px] border border-[color:var(--border)] bg-white px-2.5 py-2.5 shadow-[var(--shadow-soft)] sm:px-3.5">
+      <dt className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-[color:var(--muted-foreground)] sm:text-[10px] sm:tracking-[0.14em]">{label}</dt>
       <dd
         className={cn(
           "tabular font-display text-2xl font-extrabold leading-tight",

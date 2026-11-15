@@ -427,3 +427,6 @@ where s.tracking_number = '771975185243' and v.vehicle_number = 'TL-001';
 alter table shipments add column if not exists transport_mode text;
 alter table shipments add column if not exists departed_at timestamptz;
 alter table shipments add column if not exists live_route boolean not null default false;
+
+-- Customer passwords (salted hash computed by the API; never exposed through the anon key).
+alter table users add column if not exists password_hash text;
