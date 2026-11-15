@@ -36,6 +36,9 @@ create table if not exists shipments (
   estimated_delivery timestamptz,
   last_location text not null,
   proof_of_delivery jsonb,
+  transport_mode text,
+  departed_at timestamptz,
+  live_route boolean not null default false,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   constraint shipments_tracking_non_empty check (length(trim(tracking_number)) > 0),
@@ -418,3 +421,9 @@ insert into location_events (shipment_id, vehicle_id, latitude, longitude, addre
 select s.id, v.id, 48.8566, 2.3522, 'Paris, FR', '2026-02-07T07:25:00Z'::timestamptz
 from shipments s cross join vehicles v
 where s.tracking_number = '771975185243' and v.vehicle_number = 'TL-001';
+
+
+-- Live-route columns (safe to re-run on an existing database).
+alter table shipments add column if not exists transport_mode text;
+alter table shipments add column if not exists departed_at timestamptz;
+alter table shipments add column if not exists live_route boolean not null default false;

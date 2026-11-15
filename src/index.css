@@ -1,32 +1,34 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Helvetica Neue", Arial, sans-serif;
-}
-
 :root {
-  --brand-primary: #0f3d5e;
+  --brand-primary: #0b3350;
   --brand-accent: #f59e0b;
-  --background: #ececec;
-  --foreground: #333333;
-  --text: #333333;
-  --ink-strong: #333333;
+  --background: #f5f2ec;
+  --foreground: #14232f;
+  --text: #14232f;
+  --ink-strong: #0b1f2e;
   --panel: #ffffff;
-  --panel-subtle: #f9f9f9;
-  --secondary: #6e6e6e;
-  --secondary-strong: #575757;
+  --panel-subtle: #faf8f4;
+  --surface-2: #f0ece4;
+  --secondary: #5f6c76;
+  --secondary-strong: #3f4c56;
   --accent: #f59e0b;
   --accent-strong: #d97706;
   --accent-foreground: #ffffff;
-  --muted-foreground: #6a6a6a;
-  --border: #d9d9d9;
-  --line: #d9d9d9;
-  --ring: rgba(15, 61, 94, 0.22);
+  --muted-foreground: #5f6c76;
+  --border: #e3ddd2;
+  --line: #e3ddd2;
+  --ring: rgba(11, 51, 80, 0.22);
   --danger: #b4234a;
-  --shadow-soft: 0 7px 20px rgba(0, 0, 0, 0.07);
-  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.18);
+  --success: #15803d;
+  --shadow-soft: 0 1px 2px rgba(11, 31, 46, 0.05), 0 8px 24px rgba(11, 31, 46, 0.06);
+  --shadow-card: 0 2px 4px rgba(11, 31, 46, 0.06), 0 24px 60px rgba(11, 31, 46, 0.14);
   color-scheme: light;
+}
+
+@theme {
+  --font-sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
 }
 
 * {
@@ -43,6 +45,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
@@ -85,7 +88,7 @@ select {
 .bg-white\/8,
 .bg-white\/10,
 .bg-white\/12 {
-  background: #f9f9f9 !important;
+  background: var(--panel-subtle) !important;
 }
 
 .border-white\/8,
@@ -131,4 +134,97 @@ select {
 
 .text-slate-300 {
   color: #5b2b95 !important;
+}
+
+
+/* ---------- Typography ---------- */
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Motion ---------- */
+@keyframes vessel-pulse {
+  0% { transform: scale(0.8); opacity: 0.55; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
+.vessel-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: vessel-pulse 2.2s ease-out infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rise {
+  opacity: 0;
+  animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes shimmer {
+  from { background-position: -240px 0; }
+  to { background-position: 240px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #ece7dd 0%, #f6f2ea 50%, #ece7dd 100%);
+  background-size: 480px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 10px;
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -28; }
+}
+
+.route-flow {
+  stroke-dasharray: 4 10;
+  animation: dash-flow 1.4s linear infinite;
+}
+
+@keyframes drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: drift 70s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.live-dot {
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .vessel-pulse, .route-flow, .ticker-track, .live-dot, .skeleton {
+    animation: none !important;
+    opacity: 1;
+  }
 }

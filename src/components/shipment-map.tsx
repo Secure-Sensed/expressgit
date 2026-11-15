@@ -1,27 +1,16 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdvancedMarker, APIProvider, InfoWindow, Map, useMap } from "@vis.gl/react-google-maps";
-import { useState } from "react";
 import { MapPinOff } from "lucide-react";
 
+import { MODE_META, modeMeta } from "@/components/transport-icons";
+import { useNow } from "@/hooks/use-now";
+import { arcPoints, formatCountdown, liveState, pointOf, type LatLng } from "@/lib/geo";
+import { formatStatusLabel } from "@/lib/utils";
 import type { Shipment, Vehicle } from "@/types";
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 const MAP_ID = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined) || "DEMO_MAP_ID";
-const US_CENTER = { lat: 39.8283, lng: -98.5795 };
-
-type Point = { lat: number; lng: number };
-
-function pointOf(lat?: number | null, lng?: number | null): Point | null {
-  return lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
-}
-
-function shipmentPoints(shipment: Shipment) {
-  return {
-    origin: pointOf(shipment.originLat, shipment.originLng),
-    current: pointOf(shipment.currentLat, shipment.currentLng),
-    destination: pointOf(shipment.destinationLat, shipment.destinationLng)
-  };
-}
+const WORLD_CENTER = { lat: 22, lng: 12 };
 
 interface ShipmentMapProps {
   shipments: Shipment[];
@@ -29,15 +18,21 @@ interface ShipmentMapProps {
   vehicles?: Vehicle[];
   onSelect?: (trackingNumber: string) => void;
   className?: string;
+  /** Zoom to the selected shipment's whole route instead of showing the world. */
+  focusSelected?: boolean;
+  /** Hide the controls and lock gestures, for decorative maps. */
+  quiet?: boolean;
 }
 
 export function ShipmentMap(props: ShipmentMapProps) {
   if (!API_KEY) {
     return (
-      <div className={`flex flex-col items-center justify-center gap-2 bg-[#f4f4f4] p-6 text-center text-sm text-[color:var(--muted-foreground)] ${props.className || ""}`}>
+      <div className={`flex flex-col items-center justify-center gap-2 bg-[var(--surface-2)] p-6 text-center text-sm text-[color:var(--muted-foreground)] ${props.className || ""}`}>
         <MapPinOff className="h-6 w-6" />
         <p className="font-medium text-[color:var(--foreground)]">Map unavailable</p>
-        <p>Set <code>VITE_GOOGLE_MAPS_API_KEY</code> (Maps JavaScript API) and rebuild.</p>
+        <p>
+          Set <code>VITE_GOOGLE_MAPS_API_KEY</code> (Maps JavaScript API) and rebuild.
+        </p>
       </div>
     );
   }
@@ -47,12 +42,16 @@ export function ShipmentMap(props: ShipmentMapProps) {
       <div className={props.className}>
         <Map
           mapId={MAP_ID}
-          defaultCenter={US_CENTER}
-          defaultZoom={4}
-          gestureHandling="greedy"
+          defaultCenter={WORLD_CENTER}
+          defaultZoom={2}
+          minZoom={2}
+          gestureHandling={props.quiet ? "cooperative" : "greedy"}
+          disableDefaultUI={props.quiet}
           streetViewControl={false}
           mapTypeControl={false}
-          fullscreenControl
+          fullscreenControl={!props.quiet}
+          zoomControl={!props.quiet}
+          clickableIcons={false}
           style={{ width: "100%", height: "100%" }}
         >
           <MapContents {...props} />
@@ -62,8 +61,9 @@ export function ShipmentMap(props: ShipmentMapProps) {
   );
 }
 
-function MapContents({ shipments, selectedTracking, vehicles = [], onSelect }: ShipmentMapProps) {
+function MapContents({ shipments, selectedTracking, vehicles = [], onSelect, focusSelected }: ShipmentMapProps) {
   const map = useMap();
+  const now = useNow(1000);
   const [openInfo, setOpenInfo] = useState<string | null>(null);
 
   const selected = useMemo(
@@ -71,31 +71,31 @@ function MapContents({ shipments, selectedTracking, vehicles = [], onSelect }: S
     [shipments, selectedTracking]
   );
 
-  // Fit the viewport to the selected shipment, or to everything when nothing is selected.
-  const fitKey = selected
-    ? `${selected.trackingNumber}|${selected.currentLat}|${selected.currentLng}|${selected.destinationLat}|${selected.originLat}`
-    : `all|${shipments.length}`;
+  // Frame the selected route (or all routes) when the selection or the set of shipments changes,
+  // not on every tick, so the user can pan and zoom freely while things move.
+  const fitKey = selected && focusSelected !== false ? `sel|${selected.trackingNumber}|${selected.originLat}|${selected.destinationLat}` : `all|${shipments.length}`;
 
   useEffect(() => {
     if (!map) return;
     const bounds = new google.maps.LatLngBounds();
     let count = 0;
-    const targets = selected ? [selected] : shipments;
+    const targets = selected && focusSelected !== false ? [selected] : shipments;
+
     for (const shipment of targets) {
-      const { origin, current, destination } = shipmentPoints(shipment);
-      for (const point of [origin, current, destination]) {
+      for (const point of [pointOf(shipment.originLat, shipment.originLng), pointOf(shipment.destinationLat, shipment.destinationLng)]) {
         if (point) {
           bounds.extend(point);
           count += 1;
         }
       }
     }
+
     if (count === 0) return;
     if (count === 1) {
       map.setCenter(bounds.getCenter());
-      map.setZoom(9);
+      map.setZoom(8);
     } else {
-      map.fitBounds(bounds, 56);
+      map.fitBounds(bounds, targets.length === 1 ? 72 : 24);
     }
   }, [map, fitKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -105,8 +105,9 @@ function MapContents({ shipments, selectedTracking, vehicles = [], onSelect }: S
         <ShipmentLayer
           key={shipment.trackingNumber}
           shipment={shipment}
+          now={now}
           active={shipment.trackingNumber === selected?.trackingNumber}
-          showEndpoints={shipment.trackingNumber === selected?.trackingNumber}
+          dim={Boolean(selected) && shipments.length > 1 && shipment.trackingNumber !== selected?.trackingNumber}
           onSelect={() => {
             onSelect?.(shipment.trackingNumber);
             setOpenInfo(shipment.trackingNumber);
@@ -131,96 +132,145 @@ function MapContents({ shipments, selectedTracking, vehicles = [], onSelect }: S
 
 function ShipmentLayer({
   shipment,
+  now,
   active,
-  showEndpoints,
+  dim,
   onSelect,
   infoOpen,
   onCloseInfo
 }: {
   shipment: Shipment;
+  now: number;
   active: boolean;
-  showEndpoints: boolean;
+  dim: boolean;
   onSelect: () => void;
   infoOpen: boolean;
   onCloseInfo: () => void;
 }) {
   const map = useMap();
-  const { origin, current, destination } = shipmentPoints(shipment);
-  const delivered = /delivered/i.test(shipment.status);
+  const meta = modeMeta(shipment.transportMode);
+  const state = liveState(shipment, now);
+  const origin = pointOf(shipment.originLat, shipment.originLng);
+  const destination = pointOf(shipment.destinationLat, shipment.destinationLng);
+  const delivered = state.phase === "delivered";
+  const moving = state.phase === "in_transit";
+
+  // The route curve only changes when the endpoints change.
+  const arc = useMemo<LatLng[]>(() => (origin && destination ? arcPoints(origin, destination, 72) : []), [origin?.lat, origin?.lng, destination?.lat, destination?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const travelled = useRef<google.maps.Polyline | null>(null);
+  const remaining = useRef<google.maps.Polyline | null>(null);
+
+  // Create the polylines once per route, then only move their paths on each tick.
+  useEffect(() => {
+    if (!map || arc.length === 0) return;
+
+    travelled.current = new google.maps.Polyline({ map, strokeColor: meta.color, strokeWeight: 4, geodesic: false, zIndex: 2 });
+    remaining.current = new google.maps.Polyline({
+      map,
+      strokeOpacity: 0,
+      geodesic: false,
+      zIndex: 1,
+      icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: meta.color, scale: 2.4 }, offset: "0", repeat: "12px" }]
+    });
+
+    return () => {
+      travelled.current?.setMap(null);
+      remaining.current?.setMap(null);
+      travelled.current = null;
+      remaining.current = null;
+    };
+  }, [map, arc, meta.color]);
 
   useEffect(() => {
-    if (!map) return;
-    const lines: google.maps.Polyline[] = [];
+    if (!travelled.current || !remaining.current || arc.length === 0 || !state.position) return;
 
-    // travelled: origin -> current (solid)
-    if (origin && current) {
-      lines.push(
-        new google.maps.Polyline({
-          map,
-          path: [origin, current],
-          strokeColor: "#0f3d5e",
-          strokeOpacity: active ? 0.95 : 0.35,
-          strokeWeight: active ? 5 : 3,
-          geodesic: true
-        })
-      );
+    const index = Math.min(arc.length - 1, Math.max(0, Math.round(state.fraction * (arc.length - 1))));
+    const opacity = active ? 0.95 : dim ? 0.18 : 0.5;
+    const dashOpacity = active ? 0.85 : dim ? 0.15 : 0.45;
+
+    travelled.current.setOptions({ strokeOpacity: opacity, strokeWeight: active ? 5 : 3 });
+    travelled.current.setPath([...arc.slice(0, index + 1), state.position]);
+
+    const icons = remaining.current.get("icons") as google.maps.IconSequence[];
+    if (icons?.[0]) {
+      icons[0].icon = { ...icons[0].icon!, strokeOpacity: dashOpacity, scale: active ? 2.8 : 2 };
+      remaining.current.set("icons", icons);
     }
+    remaining.current.setPath(delivered ? [] : [state.position, ...arc.slice(index + 1)]);
+  }, [now, arc, active, dim, delivered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // remaining: current -> destination (dashed)
-    if (current && destination && !delivered) {
-      lines.push(
-        new google.maps.Polyline({
-          map,
-          path: [current, destination],
-          geodesic: true,
-          strokeOpacity: 0,
-          icons: [
-            {
-              icon: { path: "M 0,-1 0,1", strokeOpacity: active ? 0.9 : 0.35, strokeColor: "#f59e0b", scale: active ? 3 : 2 },
-              offset: "0",
-              repeat: "14px"
-            }
-          ]
-        })
-      );
-    }
+  if (!state.position) return null;
 
-    return () => lines.forEach((line) => line.setMap(null));
-  }, [map, origin?.lat, origin?.lng, current?.lat, current?.lng, destination?.lat, destination?.lng, active, delivered]); // eslint-disable-line react-hooks/exhaustive-deps
+  const Icon = meta.Icon;
+  const size = active ? 40 : 30;
 
   return (
     <>
-      {showEndpoints && origin ? (
-        <AdvancedMarker position={origin} title={`Origin: ${shipment.origin}`}>
-          <div className="h-3 w-3 rounded-full border-2 border-white bg-[#0f3d5e] shadow" />
+      {active && origin ? (
+        <AdvancedMarker position={origin} title={`Origin: ${shipment.origin}`} zIndex={2}>
+          <EndpointPin label={shipment.origin} tone="origin" />
         </AdvancedMarker>
       ) : null}
-      {showEndpoints && destination ? (
-        <AdvancedMarker position={destination} title={`Destination: ${shipment.destination}`}>
-          <div className="h-4 w-4 rotate-45 border-2 border-white bg-[#f59e0b] shadow" />
+      {active && destination ? (
+        <AdvancedMarker position={destination} title={`Destination: ${shipment.destination}`} zIndex={2}>
+          <EndpointPin label={shipment.destination} tone="destination" />
         </AdvancedMarker>
       ) : null}
-      {current ? (
-        <AdvancedMarker position={current} title={`${shipment.trackingNumber} · ${shipment.lastLocation}`} onClick={onSelect} zIndex={active ? 10 : 1}>
-          <div className="relative flex items-center justify-center">
-            {active && !delivered ? <span className="absolute h-8 w-8 animate-ping rounded-full bg-[#f59e0b]/50" /> : null}
-            <span
-              className={`relative rounded-full border-2 border-white shadow-lg ${active ? "h-5 w-5" : "h-3.5 w-3.5"} ${
-                delivered ? "bg-emerald-500" : "bg-[#f59e0b]"
-              }`}
-            />
-          </div>
-        </AdvancedMarker>
-      ) : null}
-      {infoOpen && current ? (
-        <InfoWindow position={current} onCloseClick={onCloseInfo} pixelOffset={[0, -14]}>
-          <div className="space-y-0.5 text-sm text-[#333]">
-            <p className="font-semibold">{shipment.trackingNumber}</p>
-            <p>{shipment.lastLocation}</p>
-            <p className="text-xs uppercase tracking-wide text-[#6a6a6a]">{shipment.status}</p>
+
+      <AdvancedMarker position={state.position} title={`${shipment.trackingNumber} · ${shipment.lastLocation}`} onClick={onSelect} zIndex={active ? 20 : 5}>
+        <div className="relative flex items-center justify-center" style={{ width: size, height: size, opacity: dim ? 0.45 : 1 }}>
+          {moving ? <span className="vessel-pulse" style={{ color: meta.color }} /> : null}
+          <span
+            className="relative flex items-center justify-center rounded-full border-2 border-white shadow-[0_4px_14px_rgba(15,61,94,0.45)]"
+            style={{ width: size, height: size, background: delivered ? "#15803d" : meta.color, color: "#fff" }}
+          >
+            <span style={{ transform: meta.rotates && moving ? `rotate(${state.heading}deg)` : undefined, display: "flex", transition: "transform 0.6s linear" }}>
+              <Icon size={active ? 22 : 16} />
+            </span>
+          </span>
+        </div>
+      </AdvancedMarker>
+
+      {infoOpen ? (
+        <InfoWindow position={state.position} onCloseClick={onCloseInfo} pixelOffset={[0, -22]}>
+          <div className="min-w-[190px] space-y-1 text-[13px] text-[#1b2733]">
+            <p className="font-semibold tracking-wide">{shipment.trackingNumber}</p>
+            <p>
+              {shipment.origin} → {shipment.destination}
+            </p>
+            <p className="text-[#5b6b7a]">
+              {meta.label} · {formatStatusLabel(state.phase as string)}
+            </p>
+            {!delivered ? <p className="font-medium">Arrives in {formatCountdown(state.remainingMs)}</p> : null}
           </div>
         </InfoWindow>
       ) : null}
     </>
+  );
+}
+
+function EndpointPin({ label, tone }: { label: string; tone: "origin" | "destination" }) {
+  return (
+    <div className="flex -translate-y-1 flex-col items-center">
+      <span className="whitespace-nowrap rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#0f3d5e] shadow-md">{label.split(",")[0]}</span>
+      <span
+        className="mt-1 h-3 w-3 rounded-full border-2 border-white shadow"
+        style={{ background: tone === "origin" ? "#0f3d5e" : "#f59e0b" }}
+      />
+    </div>
+  );
+}
+
+export function ModeLegend({ className = "" }: { className?: string }) {
+  return (
+    <ul className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-xs ${className}`}>
+      {Object.entries(MODE_META).map(([key, meta]) => (
+        <li key={key} className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: meta.color }} />
+          {meta.short}
+        </li>
+      ))}
+    </ul>
   );
 }

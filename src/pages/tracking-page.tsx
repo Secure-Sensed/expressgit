@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Loader2, MapPinned, MessageSquareText, PackageSearch, Send, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Loader2, MessageSquareText, PackageSearch, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-import { ShipmentMap } from "@/components/shipment-map";
+import { JourneyCard } from "@/components/journey-card";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,14 +15,14 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import * as api from "@/lib/api";
-import { formatDateTime, formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/utils";
 import type { Shipment, SupportMessage, TrackResult, TrackingMode } from "@/types";
 
 const modeCopy: Record<TrackingMode, { label: string; hint: string; placeholder: string }> = {
   tracking: {
     label: "Tracking number",
     hint: "Enter up to 30 shipment identifiers. One value per line or comma-separated.",
-    placeholder: "771975185243"
+    placeholder: "TRK-LOS-101"
   },
   reference: {
     label: "Reference number",
@@ -37,15 +37,16 @@ const modeCopy: Record<TrackingMode, { label: string; hint: string; placeholder:
   pod: {
     label: "Tracking number for proof of delivery",
     hint: "Retrieve delivery confirmation from a shipment that has already completed.",
-    placeholder: "794848183811"
+    placeholder: "TRK-SYD-112"
   }
 };
 
 const examples: Array<{ mode: TrackingMode; label: string; value: string }> = [
-  { mode: "tracking", label: "Intl tracking", value: "771975185243" },
-  { mode: "reference", label: "Reference", value: "REF-INTL-1001" },
-  { mode: "tcn", label: "TCN", value: "TCN-99450001" },
-  { mode: "pod", label: "Proof of delivery", value: "794848183811" }
+  { mode: "tracking", label: "Lagos → London", value: "TRK-LOS-101" },
+  { mode: "tracking", label: "Shanghai → Los Angeles", value: "TRK-SHA-102" },
+  { mode: "tracking", label: "Dubai → Sydney", value: "TRK-DXB-103" },
+  { mode: "tracking", label: "New York → Boston", value: "TRK-NYC-001" },
+  { mode: "pod", label: "Delivered (proof)", value: "TRK-SYD-112" }
 ];
 
 export function TrackingPage() {
@@ -67,6 +68,7 @@ export function TrackingPage() {
   });
   const [requestSaving, setRequestSaving] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const lastSearched = useRef("");
 
   useEffect(() => {
     if (user) {
@@ -80,9 +82,12 @@ export function TrackingPage() {
     const query = searchParams.get("q") || "";
     const nextMode = (searchParams.get("mode") as TrackingMode) || "tracking";
     setMode(nextMode);
-    if (query && query !== input) {
+    if (query && (query !== input || results.length === 0)) {
       setInput(query);
-      void performSearch(query, nextMode);
+      if (query !== lastSearched.current) {
+        lastSearched.current = query;
+        void performSearch(query, nextMode);
+      }
     }
   }, [searchParams]);
 
@@ -227,86 +232,81 @@ export function TrackingPage() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+    <div className="grid gap-6 xl:grid-cols-[1.6fr_0.65fr]">
       <div className="space-y-6">
-        <Card className="overflow-hidden">
-          <CardContent className="p-6 sm:p-8">
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <Badge variant="muted" className="w-fit">
-                  Tracking
-                </Badge>
-                <h1 className="text-4xl font-light leading-none sm:text-5xl">Track the way you want</h1>
-                <p className="max-w-3xl text-xl leading-8 text-[color:var(--muted-foreground)]">
-                  Need the status of your shipment or proof of delivery? Enter your tracking number or reference number below.
-                </p>
-              </div>
+        <section className="rise relative overflow-hidden rounded-[28px] border border-[color:var(--border)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
+          <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-[color:var(--brand-accent)]/12 blur-3xl" />
+          <div className="relative space-y-6">
+            <div className="space-y-2">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--accent-strong)]">
+                <span className="live-dot h-1.5 w-1.5 rounded-full bg-current" />
+                Live tracking
+              </p>
+              <h1 className="font-display text-4xl font-extrabold leading-[1.02] text-[color:var(--ink-strong)] sm:text-5xl">
+                Watch it move,
+                <br />
+                not just update.
+              </h1>
+              <p className="max-w-2xl text-base leading-7 text-[color:var(--muted-foreground)]">
+                Positions are calculated from the real flight or road time between the two cities, so the vehicle keeps moving on the map
+                between refreshes.
+              </p>
+            </div>
 
-              <Tabs value={mode} onValueChange={(value) => setMode(value as TrackingMode)}>
-                <TabsList className="w-full justify-start">
-                  <TabsTrigger value="tracking">Tracking</TabsTrigger>
-                  <TabsTrigger value="reference">Reference</TabsTrigger>
-                  <TabsTrigger value="tcn">TCN</TabsTrigger>
-                  <TabsTrigger value="pod">POD</TabsTrigger>
-                </TabsList>
-              </Tabs>
+            <Tabs value={mode} onValueChange={(value) => setMode(value as TrackingMode)}>
+              <TabsList className="w-full justify-start">
+                <TabsTrigger value="tracking">Tracking</TabsTrigger>
+                <TabsTrigger value="reference">Reference</TabsTrigger>
+                <TabsTrigger value="tcn">TCN</TabsTrigger>
+                <TabsTrigger value="pod">POD</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-              <form
-                className="space-y-4"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void performSearch();
-                }}
-              >
-                <div className="space-y-2">
-                  <Label htmlFor="tracking-input">{modeCopy[mode].label}</Label>
-                  <Textarea
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void performSearch();
+              }}
+            >
+              <div className="space-y-2">
+                <Label htmlFor="tracking-input">{modeCopy[mode].label}</Label>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Input
                     id="tracking-input"
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     placeholder={modeCopy[mode].placeholder}
-                    className="min-h-[140px]"
+                    className="h-14 flex-1 text-base"
                   />
-                  <p className="text-sm text-[color:var(--muted-foreground)]">{modeCopy[mode].hint}</p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  {examples.map((example) => (
-                    <button
-                      key={`${example.mode}-${example.value}`}
-                      type="button"
-                      className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-sm transition-colors hover:bg-white/8"
-                      onClick={() => {
-                        setMode(example.mode);
-                        setInput(example.value);
-                      }}
-                    >
-                      {example.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button size="lg" type="submit" disabled={loading}>
+                  <Button size="lg" type="submit" disabled={loading} className="h-14 px-8">
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageSearch className="h-4 w-4" />}
-                    Search shipment
+                    Track
                   </Button>
-                  <Button
+                </div>
+                <p className="text-sm text-[color:var(--muted-foreground)]">{modeCopy[mode].hint}</p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--muted-foreground)]">Try</span>
+                {examples.map((example) => (
+                  <button
+                    key={`${example.mode}-${example.value}`}
                     type="button"
-                    variant="outline"
+                    className="rounded-full border border-[color:var(--border)] bg-[color:var(--panel-subtle)] px-3.5 py-1.5 text-sm transition-colors hover:border-[color:var(--brand-primary)] hover:bg-white"
                     onClick={() => {
-                      setInput("");
-                      setResults([]);
-                      setSelectedTracking("");
+                      setMode(example.mode);
+                      setInput(example.value);
+                      void performSearch(example.value, example.mode);
                     }}
                   >
-                    Clear
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </CardContent>
-        </Card>
+                    {example.label}
+                  </button>
+                ))}
+              </div>
+            </form>
+          </div>
+        </section>
 
         <Card>
           <CardHeader>
@@ -329,7 +329,7 @@ export function TrackingPage() {
             {results.length ? (
               results.map((result) =>
                 result.found && result.shipment ? (
-                  <ResultCard
+                  <JourneyCard
                     key={`${result.query}-${result.shipment.trackingNumber}`}
                     shipment={result.shipment}
                     onSupport={() => setSelectedTracking(result.shipment!.trackingNumber)}
@@ -510,96 +510,6 @@ export function TrackingPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function ResultCard({
-  shipment,
-  onSupport
-}: {
-  shipment: Shipment;
-  onSupport: () => void;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-5 p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">{shipment.trackingNumber}</p>
-                <h3 className="font-[family-name:var(--font-display)] text-2xl">{shipment.origin} to {shipment.destination}</h3>
-                <p className="text-sm text-[color:var(--muted-foreground)]">Last scan at {shipment.lastLocation}</p>
-              </div>
-              <StatusBadge status={shipment.status} />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <InfoRow label="Reference" value={shipment.referenceNumber || "Not assigned"} />
-              <InfoRow label="TCN" value={shipment.tcn || "Not assigned"} />
-              <InfoRow label="Estimated delivery" value={formatDateTime(shipment.estimatedDelivery)} />
-              <InfoRow label="Updated" value={formatRelativeTime(shipment.updatedAt || shipment.events[0]?.timestamp)} />
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={onSupport}>
-                <MessageSquareText className="h-4 w-4" />
-                Open support
-              </Button>
-              <Button variant="ghost" asChild>
-                <Link to={`/operations?tracking=${encodeURIComponent(shipment.trackingNumber)}`}>
-                  <MapPinned className="h-4 w-4" />
-                  View on map
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="border-t border-white/8 bg-white/4 p-5 sm:p-6 lg:border-l lg:border-t-0">
-            <p className="text-xs uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">Latest timeline</p>
-            <div className="mt-4 space-y-4">
-              {shipment.events.slice(0, 4).map((event, index) => (
-                <div key={`${event.timestamp}-${event.title}`} className="relative pl-6">
-                  {index < shipment.events.slice(0, 4).length - 1 ? (
-                    <span className="absolute left-2.5 top-6 h-[calc(100%+0.75rem)] w-px bg-white/10" />
-                  ) : null}
-                  <span className="absolute left-0 top-1.5 h-5 w-5 rounded-full border border-white/10 bg-[color:var(--accent)]/25" />
-                  <div className="space-y-1">
-                    <p className="font-medium">{event.title}</p>
-                    <p className="text-sm text-[color:var(--muted-foreground)]">
-                      {event.location} · {formatDateTime(event.timestamp)}
-                    </p>
-                    {event.details ? <p className="text-sm leading-6 text-[color:var(--muted-foreground)]">{event.details}</p> : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {shipment.proofOfDelivery ? (
-              <>
-                <Separator className="my-5" />
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">Proof of delivery</p>
-                  <p className="text-sm leading-6 text-[color:var(--muted-foreground)]">
-                    Delivered to {shipment.proofOfDelivery.receivedBy || "recipient"} on{" "}
-                    {formatDateTime(shipment.proofOfDelivery.deliveredAt || undefined)}.
-                  </p>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-        <ShipmentMap className="h-[360px] w-full border-t border-[color:var(--border)]" shipments={[shipment]} selectedTracking={shipment.trackingNumber} />
-      </CardContent>
-    </Card>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[20px] border border-white/8 bg-white/4 px-4 py-3">
-      <p className="text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">{label}</p>
-      <p className="mt-2 text-sm font-medium">{value}</p>
     </div>
   );
 }

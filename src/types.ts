@@ -18,6 +18,28 @@ export interface ProofOfDelivery {
   signature?: string | null;
 }
 
+export type TransportMode = "air" | "express" | "ground" | "sea";
+
+export type ShipmentPhase = "scheduled" | "processing" | "in_transit" | "customs" | "out_for_delivery" | "delivered";
+
+// Server-computed motion data for a live shipment. All timestamps are ISO strings.
+export interface ShipmentMotion {
+  mode: TransportMode;
+  modeLabel: string;
+  phase: ShipmentPhase;
+  progress: number;
+  legProgress: number;
+  heading: number;
+  distanceKm: number;
+  remainingKm: number;
+  speedKmh: number;
+  departedAt: string;
+  legStart: string;
+  legEnd: string;
+  customsEnd: string;
+  arrivesAt: string;
+}
+
 export interface Shipment {
   id?: string;
   trackingNumber: string;
@@ -37,6 +59,10 @@ export interface Shipment {
   customerName?: string | null;
   estimatedDelivery?: string | null;
   proofOfDelivery?: ProofOfDelivery | null;
+  transportMode?: TransportMode | null;
+  departedAt?: string | null;
+  liveRoute?: boolean;
+  motion?: ShipmentMotion;
   events: ShipmentEvent[];
   createdAt?: string;
   updatedAt?: string;

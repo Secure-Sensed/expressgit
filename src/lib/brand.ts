@@ -5,5 +5,5 @@ export const BRAND = {
   logoMain: "Transit",
   logoAccent: "Link",
   tagline: "Track your shipments in real time",
-  supportEmail: "customer@supportupgrade.com"
+  supportEmail: "Customer@supportcaha.icu"
 } as const;

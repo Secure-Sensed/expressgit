@@ -290,6 +290,9 @@ export function AdminPage() {
         customerEmail: draft.customerEmail || undefined,
         customerName: draft.customerName || undefined,
         estimatedDelivery: draft.estimatedDelivery ? new Date(draft.estimatedDelivery).toISOString() : undefined,
+        transportMode: (draft.transportMode || undefined) as Shipment["transportMode"],
+        departedAt: draft.departedAt ? new Date(draft.departedAt).toISOString() : undefined,
+        liveRoute: Boolean(draft.liveRoute && draft.transportMode && draft.departedAt),
         events: draft.eventTitle
           ? [
               {
@@ -764,6 +767,46 @@ export function AdminPage() {
                   </Field>
                 </div>
 
+                <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--panel-subtle)] p-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 accent-[color:var(--brand-primary)]"
+                      checked={Boolean(draft.liveRoute)}
+                      onChange={(event) => setDraft((current) => ({ ...current, liveRoute: event.target.checked }))}
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">Move automatically in real time</span>
+                      <span className="block text-sm text-[color:var(--muted-foreground)]">
+                        Position, status, timeline and arrival time are calculated from the distance and the transport mode. Updating the
+                        location by hand turns this off.
+                      </span>
+                    </span>
+                  </label>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <Field label="Transport mode">
+                      <select
+                        className="h-11 w-full rounded-xl border border-[color:var(--border)] bg-white px-3 text-sm"
+                        value={draft.transportMode ?? ""}
+                        onChange={(event) => setDraft((current) => ({ ...current, transportMode: event.target.value }))}
+                      >
+                        <option value="">Not set</option>
+                        <option value="express">Express air</option>
+                        <option value="air">Air freight</option>
+                        <option value="ground">Road freight</option>
+                        <option value="sea">Ocean freight</option>
+                      </select>
+                    </Field>
+                    <Field label="Departure time">
+                      <Input
+                        type="datetime-local"
+                        value={draft.departedAt ?? ""}
+                        onChange={(event) => setDraft((current) => ({ ...current, departedAt: event.target.value }))}
+                      />
+                    </Field>
+                  </div>
+                </div>
+
                 <Separator />
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -891,6 +934,9 @@ function createDraftFromShipment(shipment?: Shipment | null) {
     customerEmail: shipment?.customerEmail || "",
     customerName: shipment?.customerName || "",
     estimatedDelivery: shipment?.estimatedDelivery ? toDateTimeLocal(shipment.estimatedDelivery) : "",
+    transportMode: (shipment?.transportMode || "") as string,
+    departedAt: shipment?.departedAt ? toDateTimeLocal(shipment.departedAt) : "",
+    liveRoute: Boolean(shipment?.liveRoute),
     eventTitle: latestEvent?.title || "",
     eventLocation: latestEvent?.location || shipment?.lastLocation || "",
     eventDetails: latestEvent?.details || "",
