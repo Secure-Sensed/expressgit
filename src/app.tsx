@@ -4,6 +4,7 @@ import { SiteShell } from "@/components/layout/site-shell";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { AdminPage } from "@/pages/admin-page";
 import { AdminLoginPage } from "@/pages/admin-login-page";
+import { AccountPage } from "@/pages/account-page";
 import { HomePage } from "@/pages/home-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { OperationsPage } from "@/pages/operations-page";
@@ -15,6 +16,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/track" element={<TrackingPage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="/operations" element={<OperationsPage />} />
         <Route path="/admin/login" element={<AdminLoginRoute />} />
         <Route path="/admin" element={<ProtectedAdminRoute />} />

@@ -4,7 +4,6 @@ import { Loader2, MessageSquareText, PackageSearch, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { JourneyCard } from "@/components/journey-card";
-import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/hooks/use-auth";
 import * as api from "@/lib/api";
 import { formatRelativeTime } from "@/lib/utils";
 import type { Shipment, SupportMessage, TrackResult, TrackingMode } from "@/types";
@@ -42,7 +40,6 @@ const modeCopy: Record<TrackingMode, { label: string; hint: string; placeholder:
 };
 
 export function TrackingPage() {
-  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState<TrackingMode>((searchParams.get("mode") as TrackingMode) || "tracking");
   const [input, setInput] = useState(searchParams.get("q") || "");
@@ -52,23 +49,8 @@ export function TrackingPage() {
   const [supportMessages, setSupportMessages] = useState<SupportMessage[]>([]);
   const [supportDraft, setSupportDraft] = useState("");
   const [supportLoading, setSupportLoading] = useState(false);
-  const [myShipments, setMyShipments] = useState<Shipment[]>([]);
-  const [requestDraft, setRequestDraft] = useState({
-    origin: "",
-    destination: "",
-    notes: ""
-  });
-  const [requestSaving, setRequestSaving] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const lastSearched = useRef("");
-
-  useEffect(() => {
-    if (user) {
-      void loadMyShipments();
-    } else {
-      setMyShipments([]);
-    }
-  }, [user]);
 
   useEffect(() => {
     const query = searchParams.get("q") || "";
@@ -115,15 +97,6 @@ export function TrackingPage() {
 
     return () => window.clearInterval(timer);
   }, [selectedTracking]);
-
-  async function loadMyShipments() {
-    try {
-      const response = await api.getShipments("me");
-      setMyShipments(response.shipments || []);
-    } catch (_error) {
-      setMyShipments([]);
-    }
-  }
 
   async function performSearch(rawInput = input, activeMode = mode) {
     const queries = rawInput
@@ -185,41 +158,6 @@ export function TrackingPage() {
       toast.error(error instanceof Error ? error.message : "Unable to send message.");
     } finally {
       setSupportLoading(false);
-    }
-  }
-
-  async function submitShipmentRequest(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!user) {
-      toast.error("Log in before requesting a shipment.");
-      return;
-    }
-
-    setRequestSaving(true);
-    try {
-      const response = await api.requestShipment({
-        origin: requestDraft.origin,
-        destination: requestDraft.destination,
-        lastLocation: requestDraft.origin,
-        status: "Created",
-        events: [
-          {
-            title: "Shipment request created",
-            location: requestDraft.origin,
-            details: requestDraft.notes || "Requested by customer",
-            timestamp: new Date().toISOString()
-          }
-        ]
-      });
-      setRequestDraft({ origin: "", destination: "", notes: "" });
-      toast.success(`Shipment created: ${response.shipment.trackingNumber}`);
-      await loadMyShipments();
-      setSelectedTracking(response.shipment.trackingNumber);
-      setResults([{ query: response.shipment.trackingNumber, found: true, shipment: response.shipment }]);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to create shipment request.");
-    } finally {
-      setRequestSaving(false);
     }
   }
 
@@ -323,86 +261,6 @@ export function TrackingPage() {
       </div>
 
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>My parcels</CardTitle>
-            <CardDescription>Shipments linked to your account.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {user ? (
-              myShipments.length ? (
-                myShipments.map((shipment) => (
-                  <button
-                    key={shipment.trackingNumber}
-                    type="button"
-                    className="flex w-full items-center justify-between rounded-[22px] border border-white/8 bg-white/4 px-4 py-3 text-left transition-colors hover:bg-white/7"
-                    onClick={() => {
-                      setMode("tracking");
-                      setInput(shipment.trackingNumber);
-                      void performSearch(shipment.trackingNumber, "tracking");
-                    }}
-                  >
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">{shipment.trackingNumber}</p>
-                      <p className="mt-1 font-semibold">{shipment.destination}</p>
-                    </div>
-                    <StatusBadge status={shipment.status} />
-                  </button>
-                ))
-              ) : (
-                <p className="text-sm text-[color:var(--muted-foreground)]">No shipments on your account yet.</p>
-              )
-            ) : (
-              <p className="text-sm text-[color:var(--muted-foreground)]">Sign in to see your shipments and request new ones.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Request a shipment</CardTitle>
-            <CardDescription>Tell us where it is going from and to.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={submitShipmentRequest}>
-              <div className="space-y-2">
-                <Label htmlFor="request-origin">Origin</Label>
-                <Input
-                  id="request-origin"
-                  placeholder="Memphis, TN"
-                  value={requestDraft.origin}
-                  onChange={(event) => setRequestDraft((current) => ({ ...current, origin: event.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="request-destination">Destination</Label>
-                <Input
-                  id="request-destination"
-                  placeholder="Los Angeles, CA"
-                  value={requestDraft.destination}
-                  onChange={(event) => setRequestDraft((current) => ({ ...current, destination: event.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="request-notes">Notes</Label>
-                <Textarea
-                  id="request-notes"
-                  placeholder="Anything we should know"
-                  value={requestDraft.notes}
-                  onChange={(event) => setRequestDraft((current) => ({ ...current, notes: event.target.value }))}
-                  className="min-h-[120px]"
-                />
-              </div>
-              <Button className="w-full" type="submit" disabled={requestSaving}>
-                {requestSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Submit request
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>Shipment support</CardTitle>

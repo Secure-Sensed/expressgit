@@ -49,7 +49,7 @@ export function HomePage() {
 
             <p className="mt-4 text-sm text-white/60">
               Have an account?{" "}
-              <Link className="font-semibold text-white underline decoration-white/30 underline-offset-4 hover:decoration-white" to="/track">
+              <Link className="font-semibold text-white underline decoration-white/30 underline-offset-4 hover:decoration-white" to="/account">
                 See your shipments
               </Link>
             </p>

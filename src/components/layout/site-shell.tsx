@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { to: "/", label: "Home", end: true },
   { to: "/track", label: "Track" },
+  { to: "/account", label: "My shipments" },
   { to: "/operations", label: "Map" }
 ];
 
@@ -30,6 +31,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   const [authOpen, setAuthOpen] = useState(false);
   const location = useLocation();
   const home = location.pathname === "/";
+  const adminArea = location.pathname.startsWith("/admin");
 
   return (
     <div className="flex min-h-screen flex-col bg-[color:var(--background)] text-[color:var(--foreground)]">
@@ -43,7 +45,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
+          <nav className={cn("hidden items-center gap-1 md:flex", adminArea && "md:hidden")} aria-label="Main">
             {navigation.map((item) => (
               <NavLink
                 key={item.to}
@@ -63,7 +65,11 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            {user ? (
+            {adminArea ? (
+              <Link to="/" className="text-sm font-medium text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]">
+                View site
+              </Link>
+            ) : user ? (
               <>
                 <span className="hidden max-w-[160px] truncate text-sm font-medium sm:inline">{user.name || user.email}</span>
                 <Button variant="ghost" size="sm" onClick={() => void logout()} disabled={loading} aria-label="Sign out" className={home ? "text-white hover:bg-white/10 hover:text-white" : ""}>
@@ -84,7 +90,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className={cn("flex gap-1 overflow-x-auto px-3 pb-2 md:hidden", home ? "text-white" : "")} aria-label="Main mobile">
+        <nav className={cn("flex gap-1 overflow-x-auto px-3 pb-2 md:hidden", home ? "text-white" : "", adminArea && "hidden")} aria-label="Main mobile">
           {navigation.map((item) => (
             <NavLink
               key={item.to}

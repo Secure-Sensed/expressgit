@@ -1,963 +1,602 @@
-import { useEffect, useState } from "react";
-import {
-  Loader2,
-  LogOut,
-  MapPinned,
-  PackagePlus,
-  RefreshCcw,
-  Send,
-  Trash2,
-  UserX
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Copy, ExternalLink, LogOut, MapPin, Pencil, Plus, Search, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { AdminOnboardingTour } from "@/components/admin-onboarding-tour";
-import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
-import { Badge } from "@/components/ui/badge";
+import { modeMeta } from "@/components/transport-icons";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import * as api from "@/lib/api";
-import { formatDateTime, formatRelativeTime } from "@/lib/utils";
-import type { Shipment, Stats, SupportMessage, SupportThread, User } from "@/types";
+import { liveState } from "@/lib/geo";
+import { cn, formatDateTime, formatRelativeTime } from "@/lib/utils";
+import type { Shipment, Stats, SupportMessage, SupportThread, TransportMode, User } from "@/types";
 
-const statsFallback: Stats = {
-  total: 0,
-  inTransit: 0,
-  delivered: 0,
-  customers: 0
-};
-const ADMIN_ONBOARDING_KEY = "tl_admin_onboarded_v1";
-const ADMIN_SHOW_ONBOARDING_KEY = "tl_admin_show_onboarding_v1";
+type Tab = "shipments" | "messages" | "customers";
 
-const presets = {
-  Pending: {
-    origin: "Memphis, TN",
-    destination: "Atlanta, GA",
-    lastLocation: "Memphis, TN",
-    daysToDelivery: 3
-  },
-  "In Transit": {
-    origin: "Indianapolis, IN",
-    destination: "Newark, NJ",
-    lastLocation: "Columbus, OH",
-    daysToDelivery: 1
-  },
-  "Out for Delivery": {
-    origin: "Dallas, TX",
-    destination: "Austin, TX",
-    lastLocation: "Austin, TX",
-    daysToDelivery: 0
-  },
-  Delivered: {
-    origin: "Indianapolis, IN",
-    destination: "Atlanta, GA",
-    lastLocation: "Atlanta, GA",
-    daysToDelivery: 0,
-    receivedBy: "Front Desk"
-  },
-  Exception: {
-    origin: "Phoenix, AZ",
-    destination: "Newark, NJ",
-    lastLocation: "St. Louis, MO",
-    daysToDelivery: 2
-  }
-} as const;
+const MANUAL_STATUSES = ["Pending", "In Transit", "Out for Delivery", "Delivered", "Exception"];
+const MODES: Array<{ value: TransportMode; label: string }> = [
+  { value: "air", label: "Air freight" },
+  { value: "express", label: "Express air" },
+  { value: "ground", label: "Road" },
+  { value: "sea", label: "Sea" }
+];
 
-type PresetValue = {
+interface Draft {
+  trackingNumber: string;
   origin: string;
   destination: string;
+  transportMode: TransportMode;
+  departedAt: string;
+  live: boolean;
+  status: string;
   lastLocation: string;
-  daysToDelivery: number;
-  receivedBy?: string;
-};
+  customerName: string;
+  customerEmail: string;
+}
 
-type Draft = ReturnType<typeof createDraftFromShipment>;
-type NotificationState = {
-  sent: boolean;
-  skipped?: string;
-  error?: string;
-};
+const selectClass =
+  "h-11 w-full rounded-xl border border-[color:var(--border)] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]";
+
+function toLocalInput(value?: string | null) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function newTrackingNumber() {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => String(b % 10)).join("") + String(Date.now()).slice(-6);
+}
+
+function emptyDraft(): Draft {
+  return {
+    trackingNumber: "",
+    origin: "",
+    destination: "",
+    transportMode: "air",
+    departedAt: toLocalInput(),
+    live: true,
+    status: "In Transit",
+    lastLocation: "",
+    customerName: "",
+    customerEmail: ""
+  };
+}
+
+function draftFrom(shipment: Shipment): Draft {
+  return {
+    trackingNumber: shipment.trackingNumber,
+    origin: shipment.origin,
+    destination: shipment.destination,
+    transportMode: (shipment.transportMode || "ground") as TransportMode,
+    departedAt: toLocalInput(shipment.departedAt || shipment.createdAt),
+    live: Boolean(shipment.liveRoute),
+    status: shipment.status,
+    lastLocation: shipment.lastLocation,
+    customerName: shipment.customerName || "",
+    customerEmail: shipment.customerEmail || ""
+  };
+}
 
 export function AdminPage() {
   const { admin, logout } = useAdminAuth();
-  const [stats, setStats] = useState<Stats>(statsFallback);
+  const [tab, setTab] = useState<Tab>("shipments");
+  const [stats, setStats] = useState<Stats>({ total: 0, inTransit: 0, delivered: 0, customers: 0 });
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [threads, setThreads] = useState<SupportThread[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedTracking, setSelectedTracking] = useState("");
-  const [supportMessages, setSupportMessages] = useState<SupportMessage[]>([]);
-  const [supportDraft, setSupportDraft] = useState("");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [draft, setDraft] = useState<Draft>(() => createDraftFromShipment());
-  const [quickStatus, setQuickStatus] = useState<keyof typeof presets>("In Transit");
-  const [quickCustomerEmail, setQuickCustomerEmail] = useState("");
-  const [quickTrackingNumber, setQuickTrackingNumber] = useState("");
-  const [quickLocation, setQuickLocation] = useState("");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<{ isNew: boolean; draft: Draft } | null>(null);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [quickWorking, setQuickWorking] = useState(false);
-  const [supportLoading, setSupportLoading] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [toDelete, setToDelete] = useState<Shipment | null>(null);
+  const [openThread, setOpenThread] = useState("");
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [reply, setReply] = useState("");
 
-  useEffect(() => {
-    void loadDashboard(true);
-  }, []);
-
-  useEffect(() => {
-    const forceShow = window.sessionStorage.getItem(ADMIN_SHOW_ONBOARDING_KEY) === "1";
-    const seen = window.localStorage.getItem(ADMIN_ONBOARDING_KEY);
-    if (forceShow || !seen) {
-      setShowOnboarding(true);
-    }
-  }, []);
-
-  // Load draft from localStorage on mount
-  useEffect(() => {
-    const savedDraft = window.localStorage.getItem("tl_admin_draft");
-    if (savedDraft) {
-      try {
-        const parsedDraft = JSON.parse(savedDraft);
-        setDraft(parsedDraft);
-      } catch (error) {
-        console.error("Failed to parse saved draft:", error);
-      }
-    }
-  }, []);
-
-  // Save draft to localStorage whenever it changes
-  useEffect(() => {
-    window.localStorage.setItem("tl_admin_draft", JSON.stringify(draft));
-  }, [draft]);
-
-  useEffect(() => {
-    const selected = shipments.find((shipment) => shipment.trackingNumber === selectedTracking);
-    if (selected) {
-      setDraft(createDraftFromShipment(selected));
-      setQuickTrackingNumber(selected.trackingNumber);
-      setQuickLocation(selected.lastLocation || "");
-      void loadSupportMessages(selected.trackingNumber);
-    } else {
-      setSupportMessages([]);
-    }
-  }, [selectedTracking, shipments]);
-
-  async function loadDashboard(initial = false) {
-    if (initial) {
-      setLoading(true);
-    }
-
+  async function load() {
     try {
-      const [statsResponse, shipmentsResponse, usersResponse] = await Promise.all([
+      const [statsRes, shipmentsRes, threadsRes, usersRes] = await Promise.all([
         api.getStats(),
         api.getShipments(),
+        api.getSupportThreads(),
         api.getUsers()
       ]);
-      setStats(statsResponse);
-      setShipments(shipmentsResponse.shipments || []);
-      setUsers(usersResponse.users || []);
-
-      if (!selectedTracking && shipmentsResponse.shipments?.[0]?.trackingNumber) {
-        setSelectedTracking(shipmentsResponse.shipments[0].trackingNumber);
-      }
-
-      await loadThreads();
+      setStats(statsRes);
+      setShipments(shipmentsRes.shipments || []);
+      setThreads(threadsRes.threads || []);
+      setUsers(usersRes.users || []);
     } catch (error) {
-      if (initial) {
-        toast.error(error instanceof Error ? error.message : "Unable to load admin data.");
-      }
+      toast.error(error instanceof Error ? error.message : "Could not load data.");
     } finally {
-      if (initial) {
-        setLoading(false);
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void load();
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!openThread) return;
+    let cancelled = false;
+    const fetchMessages = async () => {
+      try {
+        const response = await api.getSupportMessages(openThread);
+        if (!cancelled) setMessages(response.messages || []);
+      } catch (_error) {
+        /* keep what is shown */
       }
-    }
+    };
+    void fetchMessages();
+    const timer = window.setInterval(fetchMessages, 8000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [openThread]);
+
+  const rows = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return shipments.filter((shipment) =>
+      !needle ||
+      [shipment.trackingNumber, shipment.origin, shipment.destination, shipment.customerName, shipment.customerEmail]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(needle))
+    );
+  }, [shipments, search]);
+
+  function set<K extends keyof Draft>(key: K, value: Draft[K]) {
+    setEditing((current) => (current ? { ...current, draft: { ...current.draft, [key]: value } } : current));
   }
 
-  async function loadThreads() {
-    try {
-      const response = await api.getSupportThreads();
-      setThreads(response.threads || []);
-    } catch (_error) {
-      setThreads([]);
+  async function save() {
+    if (!editing) return;
+    const d = editing.draft;
+    if (!d.origin.trim() || !d.destination.trim()) {
+      toast.error("Origin and destination are required.");
+      return;
     }
-  }
-
-  async function loadSupportMessages(trackingNumber: string) {
-    try {
-      const response = await api.getSupportMessages(trackingNumber);
-      setSupportMessages(response.messages || []);
-    } catch (_error) {
-      setSupportMessages([]);
-    }
-  }
-
-  async function createQuickShipment() {
-    setQuickWorking(true);
-    try {
-      const preset = presets[quickStatus] as PresetValue;
-      const trackingNumber = generateTrackingNumber();
-      const estimatedDelivery = new Date();
-      estimatedDelivery.setDate(estimatedDelivery.getDate() + preset.daysToDelivery);
-
-      const shipment: Partial<Shipment> = {
-        trackingNumber,
-        status: quickStatus,
-        origin: preset.origin,
-        destination: preset.destination,
-        lastLocation: preset.lastLocation,
-        customerEmail: quickCustomerEmail.trim().toLowerCase() || undefined,
-        customerName: quickCustomerEmail ? quickCustomerEmail.split("@")[0].replace(/[._-]+/g, " ") : undefined,
-        estimatedDelivery: estimatedDelivery.toISOString(),
-        events: [
-          {
-            title: `Shipment marked as ${quickStatus}`,
-            location: preset.lastLocation,
-            details: "Generated from quick create",
-            timestamp: new Date().toISOString()
-          }
-        ]
-      };
-
-      if (quickStatus === "Delivered" && preset.receivedBy) {
-        shipment.proofOfDelivery = {
-          deliveredAt: new Date().toISOString(),
-          receivedBy: preset.receivedBy
-        };
-      }
-
-      const response = await api.upsertShipment(shipment);
-      toast.success(`Created shipment ${trackingNumber}`);
-      reportNotification(response.notification);
-      setQuickTrackingNumber(trackingNumber);
-      setQuickLocation(preset.lastLocation);
-      await loadDashboard();
-      setSelectedTracking(trackingNumber);
-      // Force update the draft with the new tracking number
-      setDraft(prev => ({ ...prev, trackingNumber }));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to create shipment.");
-    } finally {
-      setQuickWorking(false);
-    }
-  }
-
-  async function updateQuickLocation() {
-    if (!quickTrackingNumber.trim() || !quickLocation.trim()) {
-      toast.error("Tracking number and current location are required.");
+    if (d.customerEmail && !/^\S+@\S+\.\S+$/.test(d.customerEmail)) {
+      toast.error("Enter a valid customer email, or leave it empty.");
       return;
     }
 
-    setQuickWorking(true);
-    try {
-      const response = await api.updateShipmentLocation(
-        {
-          trackingNumber: quickTrackingNumber.trim().toUpperCase(),
-          lastLocation: quickLocation.trim()
-        }
-      );
-      toast.success("Live location updated.");
-      reportNotification(response.notification);
-      await loadDashboard();
-      setSelectedTracking(quickTrackingNumber.trim().toUpperCase());
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to update shipment location.");
-    } finally {
-      setQuickWorking(false);
-    }
-  }
+    const existing = shipments.find((item) => item.trackingNumber === d.trackingNumber);
+    const payload: Partial<Shipment> = {
+      trackingNumber: d.trackingNumber.trim() || newTrackingNumber(),
+      origin: d.origin.trim(),
+      destination: d.destination.trim(),
+      transportMode: d.transportMode,
+      liveRoute: d.live,
+      status: d.live ? "In Transit" : d.status,
+      lastLocation: d.live ? d.origin.trim() : d.lastLocation.trim() || d.origin.trim(),
+      customerName: d.customerName.trim() || undefined,
+      customerEmail: d.customerEmail.trim() || undefined
+    };
+    if (d.live) payload.departedAt = new Date(d.departedAt).toISOString();
+    if (existing && !d.live) payload.events = existing.events;
 
-  async function saveShipment(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
     setSaving(true);
     try {
-      const payload: Partial<Shipment> = {
-        trackingNumber: draft.trackingNumber || generateTrackingNumber(),
-        status: draft.status,
-        origin: draft.origin,
-        destination: draft.destination,
-        lastLocation: draft.lastLocation,
-        referenceNumber: draft.referenceNumber || undefined,
-        tcn: draft.tcn || undefined,
-        customerEmail: draft.customerEmail || undefined,
-        customerName: draft.customerName || undefined,
-        estimatedDelivery: draft.estimatedDelivery ? new Date(draft.estimatedDelivery).toISOString() : undefined,
-        transportMode: (draft.transportMode || undefined) as Shipment["transportMode"],
-        departedAt: draft.departedAt ? new Date(draft.departedAt).toISOString() : undefined,
-        liveRoute: Boolean(draft.liveRoute && draft.transportMode && draft.departedAt),
-        events: draft.eventTitle
-          ? [
-              {
-                title: draft.eventTitle,
-                location: draft.eventLocation || draft.lastLocation,
-                details: draft.eventDetails,
-                timestamp: new Date().toISOString()
-              }
-            ]
-          : undefined,
-        proofOfDelivery:
-          draft.podDeliveredAt || draft.podReceivedBy
-            ? {
-                deliveredAt: draft.podDeliveredAt ? new Date(draft.podDeliveredAt).toISOString() : undefined,
-                receivedBy: draft.podReceivedBy || undefined
-              }
-            : undefined
-      };
-
       const response = await api.upsertShipment(payload);
-      toast.success(`Shipment ${response.action}.`);
-      reportNotification(response.notification);
-      await loadDashboard();
-      setSelectedTracking(response.shipment.trackingNumber);
+      const note = response.notification;
+      toast.success(
+        `${response.action === "created" ? "Created" : "Saved"} ${response.shipment.trackingNumber}` +
+          (note?.sent ? " · customer emailed" : "")
+      );
+      setEditing(null);
+      await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to save shipment.");
+      toast.error(error instanceof Error ? error.message : "Could not save the shipment.");
     } finally {
       setSaving(false);
     }
   }
 
-  async function removeShipment() {
-    if (!selectedTracking) {
-      toast.error("Select a shipment first.");
-      return;
-    }
-
-    if (!window.confirm(`Delete shipment ${selectedTracking}?`)) {
-      return;
-    }
-
-    setDeleting(true);
+  async function remove() {
+    if (!toDelete) return;
     try {
-      await api.deleteShipment(selectedTracking);
-      toast.success(`Shipment ${selectedTracking} deleted.`);
-      setSelectedTracking("");
-      setDraft(createDraftFromShipment());
-      await loadDashboard();
+      await api.deleteShipment(toDelete.trackingNumber);
+      toast.success(`Deleted ${toDelete.trackingNumber}`);
+      setToDelete(null);
+      await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to delete shipment.");
-    } finally {
-      setDeleting(false);
+      toast.error(error instanceof Error ? error.message : "Could not delete.");
     }
   }
 
-  async function replyToSupport() {
-    if (!selectedTracking || !supportDraft.trim()) {
-      toast.error("Select a shipment and enter a message.");
-      return;
-    }
-
-    setSupportLoading(true);
+  async function sendReply() {
+    if (!openThread || !reply.trim()) return;
     try {
-      await api.sendSupportMessage(
-        {
-          trackingNumber: selectedTracking,
-          message: supportDraft.trim(),
-          from: "admin"
-        }
-      );
-      setSupportDraft("");
-      await Promise.all([loadSupportMessages(selectedTracking), loadThreads()]);
-      toast.success("Reply sent.");
+      await api.sendSupportMessage({ trackingNumber: openThread, message: reply.trim(), from: "admin" });
+      setReply("");
+      const response = await api.getSupportMessages(openThread);
+      setMessages(response.messages || []);
+      void load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to send support reply.");
-    } finally {
-      setSupportLoading(false);
+      toast.error(error instanceof Error ? error.message : "Could not send.");
     }
   }
 
   async function removeUser(email: string) {
-    if (!window.confirm(`Remove user ${email}?`)) {
-      return;
-    }
-
+    if (!window.confirm(`Delete the account ${email}? Their shipments are kept.`)) return;
     try {
       await api.deleteUser(email);
-      toast.success(`Removed ${email}`);
-      await loadDashboard();
+      toast.success("Account deleted.");
+      await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to remove user.");
-    }
-  }
-
-  const filteredShipments = shipments.filter((shipment) => {
-    const haystack = [
-      shipment.trackingNumber,
-      shipment.referenceNumber,
-      shipment.tcn,
-      shipment.origin,
-      shipment.destination,
-      shipment.lastLocation,
-      shipment.customerEmail,
-      shipment.customerName
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const matchesSearch = !search || haystack.includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || shipment.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  function reportNotification(state?: NotificationState) {
-    if (!state) return;
-    if (state.sent) {
-      toast.success("Receiver email notification sent.");
-      return;
-    }
-    if (state.error) {
-      toast.error(`Email notification failed: ${state.error}`);
-      return;
-    }
-    if (state.skipped === "missing-recipient") {
-      toast.message("No receiver email found for this shipment.");
-      return;
-    }
-    if (state.skipped === "email-not-configured") {
-      toast.message("Email not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS and MAIL_FROM to enable notifications.");
-    }
-  }
-
-  async function logoutAdmin() {
-    try {
-      await logout();
-      toast.success("Admin signed out.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to sign out.");
+      toast.error(error instanceof Error ? error.message : "Could not delete the account.");
     }
   }
 
   return (
     <div className="space-y-6">
-      {showOnboarding && <AdminOnboardingTour onDismiss={() => setShowOnboarding(false)} />}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-[color:var(--ink-strong)]">Admin</h1>
+          <p className="text-sm text-[color:var(--muted-foreground)]">Signed in as {admin?.email}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => {
+              setTab("shipments");
+              setEditing({ isNew: true, draft: emptyDraft() });
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            New shipment
+          </Button>
+          <Button variant="outline" onClick={() => void logout()}>
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+        </div>
+      </header>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard accent="orange" label="Total parcels" value={stats.total} detail="All shipments available to the admin console." />
-        <MetricCard accent="blue" label="In transit" value={stats.inTransit} detail="Shipments currently moving through the network." />
-        <MetricCard accent="green" label="Delivered" value={stats.delivered} detail="Completed shipments with delivery status." />
-        <MetricCard accent="rose" label="Customers" value={stats.customers} detail="Distinct customer identities linked to shipments." />
-      </section>
+      <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat label="Shipments" value={stats.total} />
+        <Stat label="In transit" value={stats.inTransit} />
+        <Stat label="Delivered" value={stats.delivered} />
+        <Stat label="Customers" value={users.length} />
+      </dl>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <CardTitle>Admin console</CardTitle>
-                <CardDescription>
-                  {`Signed in as ${admin?.email || "admin"}. Create, update, and monitor shipments in one place.`}
-                </CardDescription>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => void loadDashboard(true)} disabled={loading}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-                  Refresh data
-                </Button>
-                <Button variant="outline" onClick={() => void logoutAdmin()}>
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-[24px] border border-[#d7c8ff] bg-[#e6eff5] px-4 py-3 text-sm leading-6 text-[#5b2b95]">
-                Shipment changes are persisted through the backend store (Supabase when configured) and remain visible in tracking, operations, and support views.
-              </div>
-            </CardContent>
-          </Card>
+      <div className="flex gap-1 border-b border-[color:var(--border)]">
+        {(
+          [
+            ["shipments", "Shipments"],
+            ["messages", `Messages${threads.length ? ` (${threads.length})` : ""}`],
+            ["customers", "Customers"]
+          ] as Array<[Tab, string]>
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setTab(value)}
+            className={cn(
+              "-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+              tab === value ? "border-[color:var(--brand-primary)] text-[color:var(--brand-primary)]" : "border-transparent text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Shipment inventory</CardTitle>
-              <CardDescription>Search and filter shipments, then open one to edit it in the detail pane.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-[1fr_180px]">
-                <Input placeholder="Search tracking, customer, route, reference..." value={search} onChange={(event) => setSearch(event.target.value)} />
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All statuses</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="In Transit">In Transit</SelectItem>
-                    <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
-                    <SelectItem value="Delivered">Delivered</SelectItem>
-                    <SelectItem value="Exception">Exception</SelectItem>
-                    <SelectItem value="Created">Created</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+      {tab === "shipments" ? (
+        <section className="space-y-4">
+          <div className="relative max-w-md">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--muted-foreground)]" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tracking number, city or customer" className="pl-10" />
+          </div>
 
-              <ScrollArea className="h-[520px] rounded-[24px] border border-white/8">
-                <div className="space-y-2 p-3">
-                  {filteredShipments.map((shipment) => (
-                    <button
-                      key={shipment.trackingNumber}
-                      type="button"
-                      className={`w-full rounded-[22px] border px-4 py-4 text-left transition-colors ${
-                        shipment.trackingNumber === selectedTracking
-                          ? "border-[color:var(--accent)]/50 bg-[color:var(--accent)]/12"
-                          : "border-white/8 bg-white/4 hover:bg-white/7"
-                      }`}
-                      onClick={() => setSelectedTracking(shipment.trackingNumber)}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <p className="text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">{shipment.trackingNumber}</p>
-                          <p className="font-semibold">{shipment.origin} to {shipment.destination}</p>
-                          <p className="text-sm text-[color:var(--muted-foreground)]">
-                            {shipment.lastLocation} · {shipment.customerEmail || "Unassigned customer"}
-                          </p>
+          <div className="overflow-x-auto rounded-2xl border border-[color:var(--border)] bg-white">
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead className="border-b border-[color:var(--border)] bg-[color:var(--panel-subtle)] text-xs uppercase tracking-wider text-[color:var(--muted-foreground)]">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Tracking number</th>
+                  <th className="px-4 py-3 font-semibold">Route</th>
+                  <th className="px-4 py-3 font-semibold">Mode</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold">Customer</th>
+                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[color:var(--border)]">
+                {rows.map((shipment) => {
+                  const meta = modeMeta(shipment.transportMode);
+                  const state = liveState(shipment, Date.now());
+                  return (
+                    <tr key={shipment.trackingNumber} className="align-middle">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="tabular font-semibold">{shipment.trackingNumber}</span>
+                          <button
+                            type="button"
+                            aria-label="Copy tracking number"
+                            className="text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+                            onClick={() => {
+                              void navigator.clipboard?.writeText(shipment.trackingNumber);
+                              toast.success("Copied");
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
                         </div>
+                        <p className="text-xs text-[color:var(--muted-foreground)]">Created {formatRelativeTime(shipment.createdAt)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {shipment.origin.split(",")[0]} → {shipment.destination.split(",")[0]}
+                        {shipment.liveRoute && state.phase !== "delivered" ? (
+                          <div className="mt-1.5 h-1 w-28 overflow-hidden rounded-full bg-[color:var(--surface-2)]">
+                            <div className="h-full rounded-full" style={{ width: `${state.overall * 100}%`, background: meta.color }} />
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5">
+                          <meta.Icon size={15} />
+                          {meta.short}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
                         <StatusBadge status={shipment.status} />
-                      </div>
-                    </button>
+                        {!shipment.liveRoute ? <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">Manual</p> : null}
+                      </td>
+                      <td className="px-4 py-3">
+                        {shipment.customerName || shipment.customerEmail ? (
+                          <>
+                            <p>{shipment.customerName || "—"}</p>
+                            <p className="text-xs text-[color:var(--muted-foreground)]">{shipment.customerEmail}</p>
+                          </>
+                        ) : (
+                          <span className="text-[color:var(--muted-foreground)]">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <Button asChild variant="ghost" size="sm">
+                            <Link to={`/track?q=${encodeURIComponent(shipment.trackingNumber)}`} target="_blank" aria-label="Open public tracking page">
+                              <ExternalLink className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" aria-label="Edit" onClick={() => setEditing({ isNew: false, draft: draftFrom(shipment) })}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" aria-label="Delete" onClick={() => setToDelete(shipment)}>
+                            <Trash2 className="h-4 w-4 text-[color:var(--danger)]" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!loading && rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-[color:var(--muted-foreground)]">
+                      {shipments.length ? "No shipments match your search." : "No shipments yet. Use New shipment to add the first one."}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
+      {tab === "messages" ? (
+        <section className="grid gap-4 md:grid-cols-[300px_1fr]">
+          <ul className="max-h-[560px] divide-y divide-[color:var(--border)] overflow-y-auto rounded-2xl border border-[color:var(--border)] bg-white">
+            {threads.map((thread) => (
+              <li key={thread.trackingNumber}>
+                <button
+                  type="button"
+                  onClick={() => setOpenThread(thread.trackingNumber)}
+                  className={cn("w-full px-4 py-3 text-left hover:bg-[color:var(--panel-subtle)]", openThread === thread.trackingNumber && "bg-[color:var(--panel-subtle)]")}
+                >
+                  <p className="tabular text-sm font-semibold">{thread.trackingNumber}</p>
+                  <p className="truncate text-sm text-[color:var(--muted-foreground)]">{thread.lastMessage}</p>
+                  <p className="text-xs text-[color:var(--muted-foreground)]">
+                    {thread.from === "user" ? "Customer" : "You"} · {formatRelativeTime(thread.timestamp)}
+                  </p>
+                </button>
+              </li>
+            ))}
+            {threads.length === 0 ? <li className="p-8 text-center text-sm text-[color:var(--muted-foreground)]">No messages yet.</li> : null}
+          </ul>
+
+          <div className="flex min-h-[320px] flex-col rounded-2xl border border-[color:var(--border)] bg-white">
+            {openThread ? (
+              <>
+                <div className="border-b border-[color:var(--border)] px-4 py-3 font-semibold tabular">{openThread}</div>
+                <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                  {messages.map((message) => (
+                    <div key={message.id} className={cn("max-w-[80%] rounded-2xl px-4 py-2.5 text-sm", message.from === "admin" ? "ml-auto bg-[color:var(--brand-primary)] text-white" : "bg-[color:var(--surface-2)]")}>
+                      <p>{message.body}</p>
+                      <p className={cn("mt-1 text-xs", message.from === "admin" ? "text-white/70" : "text-[color:var(--muted-foreground)]")}>{formatDateTime(message.timestamp)}</p>
+                    </div>
                   ))}
                 </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Support inbox</CardTitle>
-              <CardDescription>Recent tracking-linked threads. Selecting a thread also focuses the shipment editor.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-              <ScrollArea className="h-[360px] rounded-[24px] border border-white/8">
-                <div className="space-y-2 p-3">
-                  {threads.length ? (
-                    threads.map((thread) => (
-                      <button
-                        key={`${thread.trackingNumber}-${thread.timestamp}`}
-                        type="button"
-                        className={`w-full rounded-[22px] border px-4 py-3 text-left transition-colors ${
-                          thread.trackingNumber === selectedTracking
-                            ? "border-[color:var(--accent)]/50 bg-[color:var(--accent)]/12"
-                            : "border-white/8 bg-white/4 hover:bg-white/7"
-                        }`}
-                        onClick={() => setSelectedTracking(thread.trackingNumber)}
-                      >
-                        <p className="text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">{thread.trackingNumber}</p>
-                        <p className="mt-2 text-sm font-medium">{thread.lastMessage}</p>
-                        <p className="mt-2 text-xs text-[color:var(--muted-foreground)]">{formatRelativeTime(thread.timestamp)}</p>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-4 py-10 text-center text-sm text-[color:var(--muted-foreground)]">
-                      No admin-visible support threads yet.
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-
-              <div className="space-y-4">
-                <div className="rounded-[22px] border border-white/8 bg-white/4 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">Focused thread</p>
-                  <p className="mt-2 font-semibold">{selectedTracking || "None selected"}</p>
-                </div>
-
-                <ScrollArea className="h-[220px] rounded-[24px] border border-white/8">
-                  <div className="space-y-3 p-3">
-                    {supportMessages.length ? (
-                      supportMessages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`rounded-[20px] px-4 py-3 ${
-                            message.from === "admin" ? "bg-[color:var(--accent)]/15" : "border border-white/8 bg-white/4"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted-foreground)]">{message.from}</p>
-                            <p className="text-xs text-[color:var(--muted-foreground)]">{formatRelativeTime(message.timestamp)}</p>
-                          </div>
-                          <p className="mt-2 text-sm leading-6">{message.body}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-4 py-10 text-center text-sm text-[color:var(--muted-foreground)]">
-                        No messages loaded for this shipment.
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                <div className="space-y-3">
-                  <Textarea
-                    value={supportDraft}
-                    onChange={(event) => setSupportDraft(event.target.value)}
-                    placeholder="Reply with the latest shipment status, ETA, or escalation note..."
-                    className="min-h-[120px]"
-                  />
-                  <Button className="w-full" onClick={() => void replyToSupport()} disabled={supportLoading || !supportDraft.trim()}>
-                    {supportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    Send admin reply
+                <div className="flex gap-2 border-t border-[color:var(--border)] p-3">
+                  <Textarea value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write a reply" className="min-h-[44px] flex-1" />
+                  <Button onClick={() => void sendReply()} disabled={!reply.trim()} aria-label="Send reply">
+                    <Send className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </>
+            ) : (
+              <p className="m-auto p-8 text-sm text-[color:var(--muted-foreground)]">Select a conversation.</p>
+            )}
+          </div>
+        </section>
+      ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Registered users</CardTitle>
-              <CardDescription>Local auth users stored by the backend cookie layer.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {users.length ? (
-                users.map((user) => (
-                  <div key={user.email} className="flex items-center justify-between gap-4 rounded-[22px] border border-white/8 bg-white/4 px-4 py-3">
-                    <div>
-                      <p className="font-medium">{user.name || "Unnamed user"}</p>
-                      <p className="text-sm text-[color:var(--muted-foreground)]">{user.email}</p>
-                    </div>
-                    <Button size="sm" variant="outline" onClick={() => void removeUser(user.email)}>
-                      <UserX className="h-4 w-4" />
-                      Remove
+      {tab === "customers" ? (
+        <section className="overflow-x-auto rounded-2xl border border-[color:var(--border)] bg-white">
+          <table className="w-full min-w-[520px] text-left text-sm">
+            <thead className="border-b border-[color:var(--border)] bg-[color:var(--panel-subtle)] text-xs uppercase tracking-wider text-[color:var(--muted-foreground)]">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Name</th>
+                <th className="px-4 py-3 font-semibold">Email</th>
+                <th className="px-4 py-3 font-semibold">Shipments</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[color:var(--border)]">
+              {users.map((user) => (
+                <tr key={user.email}>
+                  <td className="px-4 py-3">{user.name}</td>
+                  <td className="px-4 py-3">{user.email}</td>
+                  <td className="px-4 py-3 tabular">{shipments.filter((s) => (s.customerEmail || "").toLowerCase() === user.email.toLowerCase()).length}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Button variant="ghost" size="sm" aria-label={`Delete ${user.email}`} onClick={() => void removeUser(user.email)}>
+                      <Trash2 className="h-4 w-4 text-[color:var(--danger)]" />
                     </Button>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-12 text-center text-[color:var(--muted-foreground)]">
+                    No customer accounts yet.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          {editing ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{editing.isNew ? "New shipment" : `Edit ${editing.draft.trackingNumber}`}</DialogTitle>
+                <DialogDescription>
+                  {editing.isNew ? "A tracking number is generated if you leave it blank." : "Changing a shipment emails the customer if an address is set."}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {editing.isNew ? (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="f-track">Tracking number (optional)</Label>
+                    <Input id="f-track" value={editing.draft.trackingNumber} onChange={(event) => set("trackingNumber", event.target.value)} placeholder="Generated automatically" />
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-[color:var(--muted-foreground)]">No registered users were found.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick create</CardTitle>
-              <CardDescription>Generate a parcel with a realistic preset, then continue editing it below if needed.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+                ) : null}
                 <div className="space-y-2">
-                  <Label htmlFor="quick-status">Status</Label>
-                  <Select value={quickStatus} onValueChange={(value) => setQuickStatus(value as keyof typeof presets)}>
-                    <SelectTrigger id="quick-status">
-                      <SelectValue placeholder="Select preset status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(presets).map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="f-origin">From</Label>
+                  <Input id="f-origin" value={editing.draft.origin} onChange={(event) => set("origin", event.target.value)} placeholder="City, country" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="quick-email">Customer email</Label>
-                  <Input
-                    id="quick-email"
-                    placeholder="client@example.com"
-                    value={quickCustomerEmail}
-                    onChange={(event) => setQuickCustomerEmail(event.target.value)}
-                  />
+                  <Label htmlFor="f-dest">To</Label>
+                  <Input id="f-dest" value={editing.draft.destination} onChange={(event) => set("destination", event.target.value)} placeholder="City, country" />
                 </div>
-              </div>
-
-              <Button className="w-full" onClick={() => void createQuickShipment()} disabled={quickWorking}>
-                {quickWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
-                Generate parcel
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Live location update</CardTitle>
-              <CardDescription>Use the selected shipment or type another tracking number and push a new scan location.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="quick-tracking">Tracking number</Label>
-                <Input
-                  id="quick-tracking"
-                  placeholder="771975185243"
-                  value={quickTrackingNumber}
-                  onChange={(event) => setQuickTrackingNumber(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="quick-location">Current location</Label>
-                <Input
-                  id="quick-location"
-                  placeholder="Paris, FR"
-                  value={quickLocation}
-                  onChange={(event) => setQuickLocation(event.target.value)}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Button className="w-full" variant="secondary" onClick={() => void updateQuickLocation()} disabled={quickWorking}>
-                  {quickWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPinned className="h-4 w-4" />}
-                  Update live location
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Shipment editor</CardTitle>
-              <CardDescription>Full edit surface for the focused shipment, including metadata, event scan, and POD details.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-5" onSubmit={saveShipment}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Tracking number">
-                    <Input
-                      value={draft.trackingNumber}
-                      onChange={(event) => setDraft((current) => ({ ...current, trackingNumber: event.target.value }))}
-                      placeholder="Auto-generated if empty"
-                    />
-                  </Field>
-                  <Field label="Status">
-                    <Select value={draft.status} onValueChange={(value) => setDraft((current) => ({ ...current, status: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Created">Created</SelectItem>
-                        <SelectItem value="In Transit">In Transit</SelectItem>
-                        <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
-                        <SelectItem value="Delivered">Delivered</SelectItem>
-                        <SelectItem value="Exception">Exception</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Origin">
-                    <Input value={draft.origin} onChange={(event) => setDraft((current) => ({ ...current, origin: event.target.value }))} />
-                  </Field>
-                  <Field label="Destination">
-                    <Input value={draft.destination} onChange={(event) => setDraft((current) => ({ ...current, destination: event.target.value }))} />
-                  </Field>
-                  <Field className="md:col-span-2" label="Current location">
-                    <Input value={draft.lastLocation} onChange={(event) => setDraft((current) => ({ ...current, lastLocation: event.target.value }))} />
-                  </Field>
-                  <Field label="Reference number">
-                    <Input value={draft.referenceNumber} onChange={(event) => setDraft((current) => ({ ...current, referenceNumber: event.target.value }))} />
-                  </Field>
-                  <Field label="TCN">
-                    <Input value={draft.tcn} onChange={(event) => setDraft((current) => ({ ...current, tcn: event.target.value }))} />
-                  </Field>
-                  <Field label="Customer email">
-                    <Input value={draft.customerEmail} onChange={(event) => setDraft((current) => ({ ...current, customerEmail: event.target.value }))} />
-                  </Field>
-                  <Field label="Customer name">
-                    <Input value={draft.customerName} onChange={(event) => setDraft((current) => ({ ...current, customerName: event.target.value }))} />
-                  </Field>
-                  <Field label="Estimated delivery">
-                    <Input
-                      type="datetime-local"
-                      value={draft.estimatedDelivery}
-                      onChange={(event) => setDraft((current) => ({ ...current, estimatedDelivery: event.target.value }))}
-                    />
-                  </Field>
+                <div className="space-y-2">
+                  <Label htmlFor="f-mode">Transport</Label>
+                  <select id="f-mode" className={selectClass} value={editing.draft.transportMode} onChange={(event) => set("transportMode", event.target.value as TransportMode)}>
+                    {MODES.map((mode) => (
+                      <option key={mode.value} value={mode.value}>
+                        {mode.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="f-name">Customer name</Label>
+                  <Input id="f-name" value={editing.draft.customerName} onChange={(event) => set("customerName", event.target.value)} />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="f-email">Customer email</Label>
+                  <Input id="f-email" type="email" value={editing.draft.customerEmail} onChange={(event) => set("customerEmail", event.target.value)} placeholder="Receives updates and sees this shipment in their account" />
                 </div>
 
-                <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--panel-subtle)] p-4">
-                  <label className="flex cursor-pointer items-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 accent-[color:var(--brand-primary)]"
-                      checked={Boolean(draft.liveRoute)}
-                      onChange={(event) => setDraft((current) => ({ ...current, liveRoute: event.target.checked }))}
-                    />
-                    <span>
-                      <span className="block text-sm font-semibold">Move automatically in real time</span>
-                      <span className="block text-sm text-[color:var(--muted-foreground)]">
-                        Position, status, timeline and arrival time are calculated from the distance and the transport mode. Updating the
-                        location by hand turns this off.
-                      </span>
+                <label className="flex items-start gap-3 rounded-xl border border-[color:var(--border)] p-3 sm:col-span-2">
+                  <input type="checkbox" className="mt-1 h-4 w-4" checked={editing.draft.live} onChange={(event) => set("live", event.target.checked)} />
+                  <span className="text-sm">
+                    <span className="font-semibold">Move automatically</span>
+                    <span className="block text-[color:var(--muted-foreground)]">
+                      Position, status and arrival time follow the real travel time between the two cities. Turn off to set the status and location yourself.
                     </span>
-                  </label>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <Field label="Transport mode">
-                      <select
-                        className="h-11 w-full rounded-xl border border-[color:var(--border)] bg-white px-3 text-sm"
-                        value={draft.transportMode ?? ""}
-                        onChange={(event) => setDraft((current) => ({ ...current, transportMode: event.target.value }))}
-                      >
-                        <option value="">Not set</option>
-                        <option value="express">Express air</option>
-                        <option value="air">Air freight</option>
-                        <option value="ground">Road freight</option>
-                        <option value="sea">Ocean freight</option>
+                  </span>
+                </label>
+
+                {editing.draft.live ? (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="f-depart">Departure time</Label>
+                    <Input id="f-depart" type="datetime-local" value={editing.draft.departedAt} onChange={(event) => set("departedAt", event.target.value)} />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="f-status">Status</Label>
+                      <select id="f-status" className={selectClass} value={editing.draft.status} onChange={(event) => set("status", event.target.value)}>
+                        {MANUAL_STATUSES.map((status) => (
+                          <option key={status}>{status}</option>
+                        ))}
                       </select>
-                    </Field>
-                    <Field label="Departure time">
-                      <Input
-                        type="datetime-local"
-                        value={draft.departedAt ?? ""}
-                        onChange={(event) => setDraft((current) => ({ ...current, departedAt: event.target.value }))}
-                      />
-                    </Field>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field className="md:col-span-2" label="Latest event title">
-                    <Input value={draft.eventTitle} onChange={(event) => setDraft((current) => ({ ...current, eventTitle: event.target.value }))} />
-                  </Field>
-                  <Field className="md:col-span-2" label="Latest event location">
-                    <Input
-                      value={draft.eventLocation}
-                      onChange={(event) => setDraft((current) => ({ ...current, eventLocation: event.target.value }))}
-                    />
-                  </Field>
-                  <Field className="md:col-span-2" label="Event details">
-                    <Textarea
-                      className="min-h-[120px]"
-                      value={draft.eventDetails}
-                      onChange={(event) => setDraft((current) => ({ ...current, eventDetails: event.target.value }))}
-                    />
-                  </Field>
-                  <Field label="POD received by">
-                    <Input
-                      value={draft.podReceivedBy}
-                      onChange={(event) => setDraft((current) => ({ ...current, podReceivedBy: event.target.value }))}
-                    />
-                  </Field>
-                  <Field label="POD delivered at">
-                    <Input
-                      type="datetime-local"
-                      value={draft.podDeliveredAt}
-                      onChange={(event) => setDraft((current) => ({ ...current, podDeliveredAt: event.target.value }))}
-                    />
-                  </Field>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Save shipment
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDraft(createDraftFromShipment(shipments.find((shipment) => shipment.trackingNumber === selectedTracking)))}
-                  >
-                    Reset draft
-                  </Button>
-                  <Button type="button" variant="destructive" onClick={() => void removeShipment()} disabled={deleting || !selectedTracking}>
-                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    Delete shipment
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Focused shipment snapshot</CardTitle>
-              <CardDescription>The currently selected shipment from the list or support inbox.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {selectedTracking ? (
-                <>
-                  <div className="flex items-start justify-between gap-4 rounded-[22px] border border-white/8 bg-white/4 px-4 py-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">Focused tracking</p>
-                      <p className="mt-2 text-xl font-semibold">{selectedTracking}</p>
                     </div>
-                    <StatusBadge status={draft.status} />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Snapshot label="Origin" value={draft.origin || "Unknown"} />
-                    <Snapshot label="Destination" value={draft.destination || "Unknown"} />
-                    <Snapshot label="Current scan" value={draft.lastLocation || "Unknown"} />
-                    <Snapshot label="ETA" value={draft.estimatedDelivery ? formatDateTime(new Date(draft.estimatedDelivery).toISOString()) : "Not set"} />
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-[color:var(--muted-foreground)]">Select a shipment to see its snapshot.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+                    <div className="space-y-2">
+                      <Label htmlFor="f-loc">
+                        <MapPin className="mr-1 inline h-3.5 w-3.5" />
+                        Current location
+                      </Label>
+                      <Input id="f-loc" value={editing.draft.lastLocation} onChange={(event) => set("lastLocation", event.target.value)} placeholder="City, country" />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => void save()} disabled={saving}>
+                  {saving ? "Saving…" : editing.isNew ? "Create shipment" : "Save changes"}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(toDelete)} onOpenChange={(open) => !open && setToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {toDelete?.trackingNumber}?</DialogTitle>
+            <DialogDescription>The shipment and its history are removed. The tracking number will stop working. This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setToDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => void remove()}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function Field({
-  label,
-  children,
-  className = ""
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
+function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className={`space-y-2 ${className}`}>
-      <Label>{label}</Label>
-      {children}
+    <div className="rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3">
+      <dt className="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">{label}</dt>
+      <dd className="tabular font-display text-3xl font-extrabold text-[color:var(--ink-strong)]">{value}</dd>
     </div>
   );
-}
-
-function Snapshot({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[20px] border border-white/8 bg-white/4 px-4 py-3">
-      <p className="text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">{label}</p>
-      <p className="mt-2 text-sm font-medium">{value}</p>
-    </div>
-  );
-}
-
-function createDraftFromShipment(shipment?: Shipment | null) {
-  const latestEvent = shipment?.events?.[0];
-  return {
-    trackingNumber: shipment?.trackingNumber || "",
-    status: shipment?.status || "In Transit",
-    origin: shipment?.origin || "",
-    destination: shipment?.destination || "",
-    lastLocation: shipment?.lastLocation || "",
-    referenceNumber: shipment?.referenceNumber || "",
-    tcn: shipment?.tcn || "",
-    customerEmail: shipment?.customerEmail || "",
-    customerName: shipment?.customerName || "",
-    estimatedDelivery: shipment?.estimatedDelivery ? toDateTimeLocal(shipment.estimatedDelivery) : "",
-    transportMode: (shipment?.transportMode || "") as string,
-    departedAt: shipment?.departedAt ? toDateTimeLocal(shipment.departedAt) : "",
-    liveRoute: Boolean(shipment?.liveRoute),
-    eventTitle: latestEvent?.title || "",
-    eventLocation: latestEvent?.location || shipment?.lastLocation || "",
-    eventDetails: latestEvent?.details || "",
-    podReceivedBy: shipment?.proofOfDelivery?.receivedBy || "",
-    podDeliveredAt: shipment?.proofOfDelivery?.deliveredAt ? toDateTimeLocal(shipment.proofOfDelivery.deliveredAt) : ""
-  };
-}
-
-function toDateTimeLocal(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (input: number) => String(input).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
-    date.getMinutes()
-  )}`;
-}
-
-function generateTrackingNumber() {
-  let output = "";
-  for (let index = 0; index < 12; index += 1) {
-    output += Math.floor(Math.random() * 10).toString();
-  }
-  return output;
 }
