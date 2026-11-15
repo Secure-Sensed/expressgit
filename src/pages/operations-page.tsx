@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CircleMarker, MapContainer, Polyline, Popup, TileLayer } from "react-leaflet";
 import { Loader2, RefreshCcw, Route, Truck } from "lucide-react";
 import { toast } from "sonner";
 
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
+import { ShipmentMap } from "@/components/shipment-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -26,7 +26,7 @@ export function OperationsPage() {
 
     const timer = window.setInterval(() => {
       void loadOperations();
-    }, 15000);
+    }, 5000);
 
     return () => window.clearInterval(timer);
   }, []);
@@ -65,11 +65,6 @@ export function OperationsPage() {
   const selectedShipment =
     shipments.find((shipment) => shipment.trackingNumber === selectedTracking) || shipments[0] || null;
 
-  const center: [number, number] =
-    selectedShipment?.currentLat != null && selectedShipment?.currentLng != null
-      ? [selectedShipment.currentLat, selectedShipment.currentLng]
-      : [39.8283, -98.5795];
-
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -94,7 +89,7 @@ export function OperationsPage() {
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <CardTitle>Live operations map</CardTitle>
-              <CardDescription>Current shipment positions, route anchors, and vehicle locations rendered from the current API state.</CardDescription>
+              <CardDescription>Current shipment positions, route anchors, and vehicle locations refreshed every 5 seconds.</CardDescription>
             </div>
             <Button variant="outline" onClick={() => void loadOperations(true)} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
@@ -103,86 +98,13 @@ export function OperationsPage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="h-[560px]">
-              <MapContainer key={selectedShipment?.trackingNumber || "overview"} center={center} zoom={selectedShipment ? 5 : 4} scrollWheelZoom>
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-
-                {shipments.map((shipment) => {
-                  const points: Array<[number, number]> = [];
-                  if (shipment.originLat != null && shipment.originLng != null) {
-                    points.push([shipment.originLat, shipment.originLng]);
-                  }
-                  if (shipment.currentLat != null && shipment.currentLng != null) {
-                    points.push([shipment.currentLat, shipment.currentLng]);
-                  }
-                  if (shipment.destinationLat != null && shipment.destinationLng != null) {
-                    points.push([shipment.destinationLat, shipment.destinationLng]);
-                  }
-
-                  return (
-                    <div key={shipment.trackingNumber}>
-                      {points.length > 1 ? (
-                        <Polyline
-                          pathOptions={{
-                            color: shipment.trackingNumber === selectedShipment?.trackingNumber ? "#ff7f29" : "#69b7ff",
-                            opacity: shipment.trackingNumber === selectedShipment?.trackingNumber ? 0.85 : 0.35,
-                            weight: shipment.trackingNumber === selectedShipment?.trackingNumber ? 4 : 2
-                          }}
-                          positions={points}
-                        />
-                      ) : null}
-
-                      {shipment.currentLat != null && shipment.currentLng != null ? (
-                        <CircleMarker
-                          center={[shipment.currentLat, shipment.currentLng]}
-                          eventHandlers={{
-                            click: () => setSelectedTracking(shipment.trackingNumber)
-                          }}
-                          pathOptions={{
-                            color: shipment.trackingNumber === selectedShipment?.trackingNumber ? "#fff4d9" : "#ff7f29",
-                            fillColor: shipment.trackingNumber === selectedShipment?.trackingNumber ? "#ffd8a9" : "#ff7f29",
-                            fillOpacity: 0.95
-                          }}
-                          radius={shipment.trackingNumber === selectedShipment?.trackingNumber ? 12 : 8}
-                        >
-                          <Popup>
-                            <div className="space-y-1">
-                              <p className="font-semibold">{shipment.trackingNumber}</p>
-                              <p>{shipment.lastLocation}</p>
-                              <p>{shipment.status}</p>
-                            </div>
-                          </Popup>
-                        </CircleMarker>
-                      ) : null}
-                    </div>
-                  );
-                })}
-
-                {vehicles.map((vehicle) =>
-                  vehicle.lastLocationLat != null && vehicle.lastLocationLng != null ? (
-                    <CircleMarker
-                      key={vehicle.id}
-                      center={[vehicle.lastLocationLat, vehicle.lastLocationLng]}
-                      pathOptions={{
-                        color: "#8ef0b2",
-                        fillColor: "#2ad376",
-                        fillOpacity: 0.8
-                      }}
-                      radius={6}
-                    >
-                      <Popup>
-                        <div className="space-y-1">
-                          <p className="font-semibold">{vehicle.vehicleNumber}</p>
-                          <p>{vehicle.vehicleType}</p>
-                          <p>{vehicle.driver?.name || "Unassigned driver"}</p>
-                        </div>
-                      </Popup>
-                    </CircleMarker>
-                  ) : null
-                )}
-              </MapContainer>
+              <ShipmentMap
+                className="h-full w-full"
+                shipments={shipments}
+                vehicles={vehicles}
+                selectedTracking={selectedShipment?.trackingNumber}
+                onSelect={setSelectedTracking}
+              />
             </div>
           </CardContent>
         </Card>

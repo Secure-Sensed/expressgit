@@ -268,11 +268,11 @@ values
 on conflict (email) do nothing;
 
 insert into vehicles (vehicle_number, vehicle_type, status, driver_id, last_location_lat, last_location_lng)
-select 'FDX-001', 'van', 'in_transit', id, 40.7128, -74.006 from users where email = 'john.driver@example.com'
+select 'TL-001', 'van', 'in_transit', id, 40.7128, -74.006 from users where email = 'john.driver@example.com'
 on conflict (vehicle_number) do nothing;
 
 insert into vehicles (vehicle_number, vehicle_type, status, driver_id, last_location_lat, last_location_lng)
-select 'FDX-002', 'truck', 'in_transit', id, 34.0522, -118.2437 from users where email = 'jane.driver@example.com'
+select 'TL-002', 'truck', 'in_transit', id, 34.0522, -118.2437 from users where email = 'jane.driver@example.com'
 on conflict (vehicle_number) do nothing;
 
 insert into shipments (
@@ -399,11 +399,11 @@ select
   e.details
 from (
   values
-    ('771975185243', 'In transit', '2026-02-07T07:25:00Z'::timestamptz, 'Paris, FR', 'Departed FedEx location'),
-    ('771975185243', 'At local facility', '2026-02-06T19:10:00Z'::timestamptz, 'Paris, FR', 'Arrived at FedEx hub'),
-    ('771975185243', 'Shipment information sent to FedEx', '2026-02-05T14:02:00Z'::timestamptz, 'Memphis, TN', 'Label created'),
+    ('771975185243', 'In transit', '2026-02-07T07:25:00Z'::timestamptz, 'Paris, FR', 'Departed TransitLink location'),
+    ('771975185243', 'At local facility', '2026-02-06T19:10:00Z'::timestamptz, 'Paris, FR', 'Arrived at TransitLink hub'),
+    ('771975185243', 'Shipment information sent to TransitLink', '2026-02-05T14:02:00Z'::timestamptz, 'Memphis, TN', 'Label created'),
     ('794848183811', 'Delivered', '2026-02-06T15:42:00Z'::timestamptz, 'Atlanta, GA', 'Delivered to front desk'),
-    ('794848183811', 'Out for delivery', '2026-02-06T10:18:00Z'::timestamptz, 'Atlanta, GA', 'On FedEx vehicle'),
+    ('794848183811', 'Out for delivery', '2026-02-06T10:18:00Z'::timestamptz, 'Atlanta, GA', 'On TransitLink vehicle'),
     ('794848183811', 'At destination sort facility', '2026-02-06T04:11:00Z'::timestamptz, 'Atlanta, GA', 'Package sorted'),
     ('802516839204', 'Out for delivery', '2026-02-07T12:28:00Z'::timestamptz, 'Austin, TX', 'Courier dispatched'),
     ('802516839204', 'At destination sort facility', '2026-02-07T08:15:00Z'::timestamptz, 'Austin, TX', 'Ready for delivery'),
@@ -426,4 +426,4 @@ select id, 'admin', 'Your shipment is moving through the Paris hub and is expect
 insert into location_events (shipment_id, vehicle_id, latitude, longitude, address, timestamp)
 select s.id, v.id, 48.8566, 2.3522, 'Paris, FR', '2026-02-07T07:25:00Z'::timestamptz
 from shipments s cross join vehicles v
-where s.tracking_number = '771975185243' and v.vehicle_number = 'FDX-001';
+where s.tracking_number = '771975185243' and v.vehicle_number = 'TL-001';

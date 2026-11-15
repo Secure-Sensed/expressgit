@@ -12,7 +12,7 @@ interface MetricCardProps {
 }
 
 const accents = {
-  orange: "border-t-4 border-t-[color:var(--fedex-orange)]",
+  orange: "border-t-4 border-t-[color:var(--brand-accent)]",
   blue: "border-t-4 border-t-[#0f5b8c]",
   green: "border-t-4 border-t-[#1c6630]",
   rose: "border-t-4 border-t-[#9f1f43]"

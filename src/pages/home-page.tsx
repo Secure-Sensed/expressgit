@@ -79,13 +79,13 @@ export function HomePage() {
 
             <form className="mt-10 grid gap-3 sm:grid-cols-[1fr_200px]" onSubmit={submit}>
               <input
-                className="h-[68px] border border-[#9b9b9b] bg-white px-4 text-lg font-normal italic text-[#777] outline-none focus:border-[color:var(--fedex-purple)] md:text-xl"
+                className="h-[68px] border border-[#9b9b9b] bg-white px-4 text-lg font-normal italic text-[#777] outline-none focus:border-[color:var(--brand-primary)] md:text-xl"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={mode === "track" ? "TRACKING ID" : mode === "ship" ? "SHIPMENT REFERENCE" : "DESTINATION"}
                 value={query}
               />
               <button
-                className="inline-flex h-[68px] items-center justify-center gap-3 bg-[color:var(--fedex-orange)] px-6 text-lg font-semibold uppercase tracking-[0.02em] text-white transition-opacity hover:opacity-95 md:text-2xl"
+                className="inline-flex h-[68px] items-center justify-center gap-3 bg-[color:var(--brand-accent)] px-6 text-lg font-semibold uppercase tracking-[0.02em] text-white transition-opacity hover:opacity-95 md:text-2xl"
                 type="submit"
               >
                 {mode === "track" ? "Track" : mode === "ship" ? "Ship" : "Check"}
@@ -97,7 +97,7 @@ export function HomePage() {
       </section>
 
       <section className="mx-auto grid w-full max-w-[1220px] grid-cols-1 px-4 md:grid-cols-[1fr_320px]">
-        <div className="flex min-h-[132px] items-center gap-5 bg-[color:var(--fedex-purple)] px-8 text-white">
+        <div className="flex min-h-[132px] items-center gap-5 bg-[color:var(--brand-primary)] px-8 text-white">
           <div className="hidden h-16 w-16 items-center justify-center rounded-full border-2 border-white/80 md:flex">
             <PackageSearch className="h-8 w-8" />
           </div>
@@ -109,14 +109,14 @@ export function HomePage() {
           </div>
         </div>
         <div className="flex min-h-[132px] items-center justify-center bg-[#ececec] px-4">
-          <button className="h-[62px] w-full max-w-[260px] rounded-full border-[3px] border-[color:var(--fedex-purple)] bg-transparent px-4 text-sm font-semibold uppercase tracking-[0.04em] text-[color:var(--fedex-purple)] transition-colors hover:bg-[#f6f2ff] md:text-lg">
+          <button className="h-[62px] w-full max-w-[260px] rounded-full border-[3px] border-[color:var(--brand-primary)] bg-transparent px-4 text-sm font-semibold uppercase tracking-[0.04em] text-[color:var(--brand-primary)] transition-colors hover:bg-[#f6f2ff] md:text-lg">
             Open an account
           </button>
         </div>
       </section>
 
       <section className="mx-auto max-w-[1220px] px-4 pb-10 pt-14 text-center">
-        <h2 className="text-4xl font-normal text-[color:var(--fedex-purple)] md:text-6xl">Manage your shipments</h2>
+        <h2 className="text-4xl font-normal text-[color:var(--brand-primary)] md:text-6xl">Manage your shipments</h2>
         <div className="mt-10 grid gap-8 md:grid-cols-4">
           <ManageCard icon={UserRound} label="Schedule pickup" value={`${stats.customers} customers`} />
           <ManageCard icon={LocateFixed} label="Find locations" value={`${stats.inTransit} in transit`} />
@@ -143,7 +143,7 @@ function ModeButton({
     <button
       className={`flex min-h-[184px] flex-col items-center justify-center gap-3 px-3 text-center text-xs font-semibold tracking-[0.02em] transition-colors sm:text-sm md:text-[32px] ${
         active
-          ? "bg-[color:var(--fedex-purple)] text-white"
+          ? "bg-[color:var(--brand-primary)] text-white"
           : "bg-[#efefef] text-[#2f2f2f] hover:bg-[#e6e6e6]"
       }`}
       onClick={onClick}
@@ -166,7 +166,7 @@ function ManageCard({
 }) {
   return (
     <div className="space-y-4">
-      <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[color:var(--fedex-purple)] bg-white text-[color:var(--fedex-purple)]">
+      <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[color:var(--brand-primary)] bg-white text-[color:var(--brand-primary)]">
         <Icon className="h-12 w-12" />
       </div>
       <p className="text-lg font-semibold uppercase tracking-[0.04em] text-[#0071bc] md:text-[34px]">{label}</p>

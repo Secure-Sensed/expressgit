@@ -6,6 +6,7 @@ import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { BRAND } from "@/lib/brand";
 
 const navigation = [
   { to: "/", label: "Shipping" },
@@ -21,11 +22,11 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#f2f2f2] text-[color:var(--foreground)]">
-      <header className="bg-[color:var(--fedex-purple)] text-white">
+      <header className="bg-[color:var(--brand-primary)] text-white">
         <div className="mx-auto flex h-[92px] w-full max-w-[1220px] items-center justify-between gap-6 px-4">
-          <Link className="inline-flex items-baseline text-[58px] font-bold leading-none tracking-[-1px]" to="/">
-            <span>Fed</span>
-            <span className="text-[color:var(--fedex-orange)]">Ex</span>
+          <Link className="inline-flex items-baseline text-[44px] font-bold leading-none tracking-[-1px]" to="/">
+            <span>{BRAND.logoMain}</span>
+            <span className="text-[color:var(--brand-accent)]">{BRAND.logoAccent}</span>
           </Link>
 
           <nav className="hidden items-center gap-10 lg:flex">

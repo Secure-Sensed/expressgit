@@ -1,0 +1,22 @@
+[Unit]
+Description=TransitLink API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=malonestime
+WorkingDirectory=/home/malonestime/expressgit-work/expressgit
+EnvironmentFile=/etc/transitlink.env
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=4180
+ExecStart=/usr/bin/env node server.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

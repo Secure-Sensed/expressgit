@@ -391,15 +391,15 @@ When you create or update a shipment with a customer email:
 | "Receiver email notification sent." | Email successfully delivered | None; customer notified |
 | "Email notification failed: [error]" | SMTP or network error | Check email configuration |
 | "No receiver email found for this shipment." | Customer email field empty | Add email and update/re-create shipment |
-| "Email not configured. Set RESEND_API_KEY and MAIL_FROM to enable notifications." | Environment variables missing | See Configuration section below |
+| "Email not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS and MAIL_FROM to enable notifications." | Environment variables missing | See Configuration section below |
 
 ### Configuration for Email
 
 To enable email notifications:
 
 1. **Set environment variables** in your server:
-   - `RESEND_API_KEY`: API key from Resend or email service
-   - `MAIL_FROM`: Sender email address (e.g., `noreply@expressgit.com`)
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`: SMTP credentials
+   - `MAIL_FROM`: Sender email address (e.g., `customer@supportupgrade.com`)
 
 2. **Restart the application** for changes to take effect
 
@@ -438,7 +438,7 @@ Customer notification emails typically contain:
 - Ensure **Customer Email** field is filled when creating/editing
 
 **Problem 2: Email service not configured**
-- Check that `RESEND_API_KEY` and `MAIL_FROM` environment variables are set
+- Check that `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` environment variables are set
 - Verify values in your deployment platform (Vercel, local .env, etc.)
 - Restart application after setting variables
 

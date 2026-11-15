@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 
-const ADMIN_ONBOARDING_KEY = "fdx_admin_onboarded_v1";
-const ADMIN_SHOW_ONBOARDING_KEY = "fdx_admin_show_onboarding_v1";
+const ADMIN_ONBOARDING_KEY = "tl_admin_onboarded_v1";
+const ADMIN_SHOW_ONBOARDING_KEY = "tl_admin_show_onboarding_v1";
 
 export function AdminLoginPage() {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ export function AdminLoginPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f1edf9] text-[color:var(--fedex-purple)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e6eff5] text-[color:var(--brand-primary)]">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -61,7 +61,7 @@ export function AdminLoginPage() {
                 autoComplete="email"
                 id="admin-email"
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="admin@fedex.local"
+                placeholder="customer@supportupgrade.com"
                 required
                 type="email"
                 value={email}

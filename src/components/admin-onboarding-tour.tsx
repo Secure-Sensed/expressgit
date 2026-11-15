@@ -141,7 +141,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
       "Status messages show in toast popups at top of screen",
       "Success: 'Receiver email notification sent'",
       "Missing email: 'No receiver email found for this shipment'",
-      "Not configured: Set RESEND_API_KEY and MAIL_FROM environment variables",
+      "Not configured: Set SMTP_HOST, SMTP_USER and SMTP_PASS environment variables",
       "Without configuration, notifications will be skipped"
     ],
     icon: <Bell className="h-8 w-8" />,
@@ -212,8 +212,8 @@ export function AdminOnboardingTour({ onDismiss }: AdminOnboardingTourProps) {
   };
 
   const handleComplete = () => {
-    window.localStorage.setItem("fdx_admin_onboarded_v1", new Date().toISOString());
-    window.sessionStorage.removeItem("fdx_admin_show_onboarding_v1");
+    window.localStorage.setItem("tl_admin_onboarded_v1", new Date().toISOString());
+    window.sessionStorage.removeItem("tl_admin_show_onboarding_v1");
     onDismiss();
   };
 
@@ -221,7 +221,7 @@ export function AdminOnboardingTour({ onDismiss }: AdminOnboardingTourProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-2xl border-[#d7c8ff] bg-gradient-to-br from-[#f8f5ff] to-[#f1edf9] shadow-2xl">
+      <Card className="w-full max-w-2xl border-[#d7c8ff] bg-gradient-to-br from-[#f8f5ff] to-[#e6eff5] shadow-2xl">
         <CardHeader className="space-y-4 pb-4">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">

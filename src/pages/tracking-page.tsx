@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Loader2, MapPinned, MessageSquareText, PackageSearch, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
+import { ShipmentMap } from "@/components/shipment-map";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export function TrackingPage() {
     notes: ""
   });
   const [requestSaving, setRequestSaving] = useState(false);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -83,6 +85,25 @@ export function TrackingPage() {
       void performSearch(query, nextMode);
     }
   }, [searchParams]);
+
+  // Live refresh: re-query the current results every 5s without touching the UI state.
+  useEffect(() => {
+    const queries = results.filter((item) => item.found).map((item) => item.query);
+    if (!queries.length) return;
+
+    const timer = window.setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        const response = await api.trackShipments(mode, queries);
+        setResults(response.results || []);
+        setLastSync(new Date());
+      } catch (_error) {
+        /* keep showing the last known position */
+      }
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [results.map((item) => item.query).join("|"), mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selectedTracking) {
@@ -123,6 +144,7 @@ export function TrackingPage() {
     try {
       const response = await api.trackShipments(activeMode, queries);
       setResults(response.results || []);
+      setLastSync(new Date());
       const firstFound = (response.results || []).find((item) => item.found && item.shipment);
       if (firstFound?.shipment?.trackingNumber) {
         setSelectedTracking(firstFound.shipment.trackingNumber);
@@ -289,7 +311,19 @@ export function TrackingPage() {
         <Card>
           <CardHeader>
             <CardTitle>Results</CardTitle>
-            <CardDescription>Every result carries route, timeline, and next actions.</CardDescription>
+            <CardDescription>
+              {results.some((item) => item.found) ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  Live — position refreshes every 5 seconds{lastSync ? ` · last sync ${lastSync.toLocaleTimeString()}` : ""}
+                </span>
+              ) : (
+                "Search a tracking number to see its route on the map."
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {results.length ? (
@@ -555,6 +589,7 @@ function ResultCard({
             ) : null}
           </div>
         </div>
+        <ShipmentMap className="h-[360px] w-full border-t border-[color:var(--border)]" shipments={[shipment]} selectedTracking={shipment.trackingNumber} />
       </CardContent>
     </Card>
   );

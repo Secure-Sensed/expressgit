@@ -34,8 +34,8 @@ const statsFallback: Stats = {
   delivered: 0,
   customers: 0
 };
-const ADMIN_ONBOARDING_KEY = "fdx_admin_onboarded_v1";
-const ADMIN_SHOW_ONBOARDING_KEY = "fdx_admin_show_onboarding_v1";
+const ADMIN_ONBOARDING_KEY = "tl_admin_onboarded_v1";
+const ADMIN_SHOW_ONBOARDING_KEY = "tl_admin_show_onboarding_v1";
 
 const presets = {
   Pending: {
@@ -123,7 +123,7 @@ export function AdminPage() {
 
   // Load draft from localStorage on mount
   useEffect(() => {
-    const savedDraft = window.localStorage.getItem("fdx_admin_draft");
+    const savedDraft = window.localStorage.getItem("tl_admin_draft");
     if (savedDraft) {
       try {
         const parsedDraft = JSON.parse(savedDraft);
@@ -136,7 +136,7 @@ export function AdminPage() {
 
   // Save draft to localStorage whenever it changes
   useEffect(() => {
-    window.localStorage.setItem("fdx_admin_draft", JSON.stringify(draft));
+    window.localStorage.setItem("tl_admin_draft", JSON.stringify(draft));
   }, [draft]);
 
   useEffect(() => {
@@ -418,7 +418,7 @@ export function AdminPage() {
       return;
     }
     if (state.skipped === "email-not-configured") {
-      toast.message("Email not configured. Set RESEND_API_KEY and MAIL_FROM to enable notifications.");
+      toast.message("Email not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS and MAIL_FROM to enable notifications.");
     }
   }
 
@@ -464,7 +464,7 @@ export function AdminPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-[24px] border border-[#d7c8ff] bg-[#f1edf9] px-4 py-3 text-sm leading-6 text-[#5b2b95]">
+              <div className="rounded-[24px] border border-[#d7c8ff] bg-[#e6eff5] px-4 py-3 text-sm leading-6 text-[#5b2b95]">
                 Shipment changes are persisted through the backend store (Supabase when configured) and remain visible in tracking, operations, and support views.
               </div>
             </CardContent>
