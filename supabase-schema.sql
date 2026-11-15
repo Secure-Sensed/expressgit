@@ -167,11 +167,8 @@ alter table location_events enable row level security;
 alter table support_threads enable row level security;
 alter table support_messages enable row level security;
 
+-- users holds private data: no public read; the API reads it with the service role only.
 drop policy if exists users_public_read on users;
-create policy users_public_read
-on users
-for select
-using (true);
 
 drop policy if exists shipments_public_read on shipments;
 create policy shipments_public_read
@@ -197,17 +194,11 @@ on location_events
 for select
 using (true);
 
+-- support_threads holds private data: no public read; the API reads it with the service role only.
 drop policy if exists support_threads_public_read on support_threads;
-create policy support_threads_public_read
-on support_threads
-for select
-using (true);
 
+-- support_messages holds private data: no public read; the API reads it with the service role only.
 drop policy if exists support_messages_public_read on support_messages;
-create policy support_messages_public_read
-on support_messages
-for select
-using (true);
 
 drop policy if exists users_service_manage on users;
 create policy users_service_manage
